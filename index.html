@@ -1,0 +1,2545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#0f172a" />
+  <title>Paycheck Planner</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --card2: #334155;
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --green: #4ade80;
+      --amber: #fbbf24;
+      --rose: #fb7185;
+      --purple: #c084fc;
+      --border: #334155;
+      --radius: 14px;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100dvh;
+      padding-top: 0;
+      padding-bottom: calc(24px + var(--safe-bottom));
+      line-height: 1.4;
+    }
+    header {
+      position: sticky; top: 0; z-index: 50;
+      background: rgba(15,23,42,0.96);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      padding: calc(10px + var(--safe-top)) 12px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    header h1 { font-size: 1.15rem; font-weight: 700; letter-spacing: -0.02em; }
+    header p { font-size: 0.75rem; color: var(--muted); margin-top: 2px; margin-bottom: 8px; }
+    .container { padding: 16px; max-width: 520px; margin: 0 auto; }
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 14px;
+      border: 1px solid var(--border);
+    }
+    .card h2 {
+      font-size: 0.95rem;
+      font-weight: 600;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .card h2 .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+    }
+    label {
+      display: block;
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-bottom: 4px;
+      margin-top: 10px;
+    }
+    label:first-child { margin-top: 0; }
+    input, select, textarea {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 10px;
+      padding: 11px 12px;
+      font-size: 1rem;
+      outline: none;
+      -webkit-appearance: none;
+    }
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--accent);
+    }
+    input[type="number"] { font-variant-numeric: tabular-nums; }
+    textarea { min-height: 72px; resize: vertical; }
+    .row { display: flex; gap: 10px; }
+    .row > * { flex: 1; }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      background: var(--accent);
+      color: #0f172a;
+      font-weight: 600;
+      border: none;
+      border-radius: 12px;
+      padding: 12px 16px;
+      font-size: 0.95rem;
+      cursor: pointer;
+      width: 100%;
+      margin-top: 12px;
+    }
+    .btn:active { opacity: 0.85; }
+    .btn.secondary {
+      background: var(--card2);
+      color: var(--text);
+    }
+    .btn.danger { background: var(--rose); color: #0f172a; }
+    .btn.small {
+      width: auto;
+      padding: 7px 12px;
+      font-size: 0.8rem;
+      margin-top: 0;
+    }
+    .item-list { list-style: none; }
+    .item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+      gap: 10px;
+    }
+    .item:last-child { border-bottom: none; }
+    .item-info { flex: 1; min-width: 0; }
+    .item-name { font-weight: 500; font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .item-meta { font-size: 0.75rem; color: var(--muted); margin-top: 2px; }
+    .item-amount { font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .item-actions { display: flex; gap: 6px; }
+    .icon-btn {
+      background: var(--card2);
+      border: none;
+      color: var(--muted);
+      width: 32px; height: 32px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .nav {
+      display: flex;
+      justify-content: space-around;
+      padding: 4px 0 8px;
+      gap: 2px;
+      border-top: 1px solid rgba(51,65,85,0.5);
+      margin-top: 4px;
+    }
+    .nav button {
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 0.62rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1px;
+      padding: 6px 4px;
+      cursor: pointer;
+      min-width: 48px;
+      flex: 1;
+      border-radius: 10px;
+    }
+    .nav button.active {
+      color: var(--accent);
+      background: rgba(56,189,248,0.12);
+    }
+    .nav button span.icon { font-size: 1.2rem; }
+    .hidden { display: none !important; }
+    .badge {
+      display: inline-block;
+      font-size: 0.7rem;
+      padding: 2px 7px;
+      border-radius: 999px;
+      font-weight: 600;
+    }
+    .badge.green { background: rgba(74,222,128,0.15); color: var(--green); }
+    .badge.amber { background: rgba(251,191,36,0.15); color: var(--amber); }
+    .badge.rose { background: rgba(251,113,133,0.15); color: var(--rose); }
+    .badge.purple { background: rgba(192,132,252,0.15); color: var(--purple); }
+    .badge.sky { background: rgba(56,189,248,0.15); color: var(--accent); }
+    .result-box {
+      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+      border: 1px solid var(--accent);
+      border-radius: var(--radius);
+      padding: 18px;
+      margin-bottom: 14px;
+    }
+    .result-box h3 { font-size: 1rem; margin-bottom: 12px; color: var(--accent); }
+    .result-box.good { border-color: var(--green); }
+    .result-box.good h3 { color: var(--green); }
+    .result-box.warn { border-color: var(--amber); }
+    .result-box.warn h3 { color: var(--amber); }
+    .result-box.bad { border-color: var(--rose); }
+    .result-box.bad h3 { color: var(--rose); }
+    .alloc-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(51,65,85,0.6);
+      font-size: 0.92rem;
+    }
+    .alloc-row:last-child { border-bottom: none; }
+    .alloc-row .label { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .alloc-row .amt { font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .progress-wrap {
+      margin-top: 8px;
+    }
+    .progress-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.72rem;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+    .progress-header .pct {
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      color: var(--text);
+    }
+    .progress-bar {
+      height: 10px;
+      background: var(--bg);
+      border-radius: 999px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #22c55e, #4ade80);
+      border-radius: 999px;
+      transition: width 0.35s ease;
+      min-width: 0;
+    }
+    .progress-fill.amber { background: linear-gradient(90deg, #d97706, #fbbf24); }
+    .progress-fill.rose { background: linear-gradient(90deg, #e11d48, #fb7185); }
+    .progress-fill.sky { background: linear-gradient(90deg, #0284c7, #38bdf8); }
+    .progress-fill.purple { background: linear-gradient(90deg, #9333ea, #c084fc); }
+    .summary-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .summary-card {
+      background: var(--card);
+      border-radius: 12px;
+      padding: 12px;
+      border: 1px solid var(--border);
+    }
+    .summary-card .label { font-size: 0.72rem; color: var(--muted); }
+    .summary-card .value { font-size: 1.15rem; font-weight: 700; margin-top: 2px; font-variant-numeric: tabular-nums; }
+    .empty {
+      text-align: center;
+      padding: 24px 12px;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.65);
+      z-index: 200;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+    }
+    .modal {
+      background: var(--card);
+      border-radius: 20px 20px 0 0;
+      width: 100%;
+      max-width: 520px;
+      padding: 20px 16px calc(20px + var(--safe-bottom));
+      max-height: 85dvh;
+      overflow-y: auto;
+    }
+    .modal h3 { font-size: 1.1rem; margin-bottom: 14px; }
+    .modal-actions { display: flex; gap: 10px; margin-top: 16px; }
+    .phase-toggle {
+      display: flex;
+      background: var(--bg);
+      border-radius: 12px;
+      padding: 4px;
+      margin-bottom: 14px;
+    }
+    .phase-toggle button {
+      flex: 1;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      padding: 10px 8px;
+      border-radius: 10px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    .phase-toggle button.active {
+      background: var(--accent);
+      color: #0f172a;
+      font-weight: 600;
+    }
+    .tip {
+      font-size: 0.8rem;
+      color: var(--muted);
+      background: rgba(56,189,248,0.08);
+      border-left: 3px solid var(--accent);
+      padding: 10px 12px;
+      border-radius: 0 8px 8px 0;
+      margin-top: 10px;
+    }
+    .tip.good { background: rgba(74,222,128,0.08); border-left-color: var(--green); }
+    .tip.warn { background: rgba(251,191,36,0.08); border-left-color: var(--amber); }
+    .tip.bad { background: rgba(251,113,133,0.08); border-left-color: var(--rose); }
+    .total-line {
+      display: flex;
+      justify-content: space-between;
+      font-weight: 700;
+      font-size: 1.05rem;
+      padding-top: 10px;
+      margin-top: 6px;
+      border-top: 2px solid var(--border);
+    }
+    .delta-up { color: var(--green); }
+    .delta-down { color: var(--rose); }
+    .delta-flat { color: var(--muted); }
+    .audit-history-item {
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+    }
+    .audit-history-item:last-child { border-bottom: none; }
+    .audit-history-item .date { font-weight: 600; font-size: 0.95rem; }
+    .audit-history-item .summary { font-size: 0.8rem; color: var(--muted); margin-top: 4px; }
+    .rec-list {
+      list-style: none;
+      margin-top: 10px;
+    }
+    .rec-list li {
+      padding: 8px 0 8px 22px;
+      position: relative;
+      font-size: 0.88rem;
+      border-bottom: 1px solid rgba(51,65,85,0.5);
+    }
+    .rec-list li:last-child { border-bottom: none; }
+    .rec-list li::before {
+      content: "→";
+      position: absolute;
+      left: 0;
+      color: var(--accent);
+      font-weight: 700;
+    }
+    .section-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+      margin: 14px 0 6px;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Paycheck Planner</h1>
+    <p id="header-sub">Build cushion → then attack debt</p>
+    <nav class="nav">
+      <button class="active" data-tab="allocate" onclick="switchTab('allocate')">
+        <span class="icon">💵</span> Allocate
+      </button>
+      <button data-tab="audit" onclick="switchTab('audit')">
+        <span class="icon">📊</span> Audit
+      </button>
+      <button data-tab="budget" onclick="switchTab('budget')">
+        <span class="icon">🏠</span> Budget
+      </button>
+      <button data-tab="debts" onclick="switchTab('debts')">
+        <span class="icon">💳</span> Debts
+      </button>
+      <button data-tab="goals" onclick="switchTab('goals')">
+        <span class="icon">🎯</span> Goals
+      </button>
+      <button data-tab="settings" onclick="switchTab('settings')">
+        <span class="icon">⚙️</span> More
+      </button>
+    </nav>
+  </header>
+
+  <div class="container">
+    <!-- ========== ALLOCATE TAB ========== -->
+    <div id="tab-allocate">
+      <div class="card" id="coming-up-card">
+        <h2><span class="dot" style="background:var(--amber)"></span> Coming Up</h2>
+        <div id="coming-up-list"></div>
+      </div>
+
+      <div class="card">
+        <h2><span class="dot" style="background:var(--accent)"></span> This Paycheck</h2>
+        <p style="font-size:0.8rem;color:var(--muted);margin-bottom:10px;">
+          Your schedule: <strong>$3,000 advance on the 25th</strong>, main paycheck on the <strong>10th</strong>. Pick which one you’re allocating.
+        </p>
+        <label>Which paycheck is this?</label>
+        <select id="paycheck-type" onchange="onPaycheckTypeChange()">
+          <option value="advance">Advance — 25th ($3,000 flat)</option>
+          <option value="main">Main paycheck — 10th</option>
+          <option value="other">Other / one-off</option>
+        </select>
+        <label>Paycheck amount ($)</label>
+        <input type="number" id="paycheck-amount" inputmode="decimal" placeholder="e.g. 3000.00" step="0.01" min="0" />
+        <label>How to split monthly bills across the two pays</label>
+        <select id="split-method">
+          <option value="half">50/50 — each check covers half of monthly fixed costs</option>
+          <option value="proportional">Proportional — by check size (needs both amounts)</option>
+          <option value="advance-first">Advance first — 25th covers what it can; 10th covers the rest</option>
+        </select>
+        <p class="tip" id="pay-hint" style="margin-top:10px;">
+          Advance day: use this for the $3,000 on the 25th. Monthly bills are split so neither check is overloaded.
+        </p>
+        <button class="btn" onclick="generatePlan()">Generate Split Plan</button>
+      </div>
+
+      <div id="plan-result" class="hidden"></div>
+
+      <div class="card">
+        <h2><span class="dot" style="background:var(--amber)"></span> Current Mode</h2>
+        <div class="phase-toggle">
+          <button id="phase-cushion" class="active" onclick="setPhase('cushion')">1. Build Cushion</button>
+          <button id="phase-debt" onclick="setPhase('debt')">2. Attack Debt</button>
+        </div>
+        <p class="tip" id="phase-tip">Right now: cover minimums + grow your house & baby cash cushion. Extra goes to cushion until you switch modes.</p>
+      </div>
+
+      <div class="summary-grid" id="quick-stats"></div>
+    </div>
+
+    <!-- ========== AUDIT TAB ========== -->
+    <div id="tab-audit" class="hidden">
+      <div class="card">
+        <h2><span class="dot" style="background:var(--purple)"></span> Weekly Check-in</h2>
+        <p style="font-size:0.8rem;color:var(--muted);margin-bottom:12px;">
+          Log balances any day (e.g. every Friday). The app compares to your last audit and tells you what’s working and what to adjust.
+        </p>
+        <label>Audit date</label>
+        <input type="date" id="audit-date" />
+        <div id="audit-form-fields"></div>
+        <label>Notes (optional)</label>
+        <textarea id="audit-notes" placeholder="e.g. Paid extra on Chase, baby shower gifts this week…"></textarea>
+        <button class="btn" onclick="runAudit()">Run Weekly Audit</button>
+      </div>
+
+      <div id="audit-result" class="hidden"></div>
+
+      <div class="card">
+        <h2><span class="dot" style="background:var(--accent)"></span> Share Weekly Report</h2>
+        <p style="font-size:0.8rem;color:var(--muted);margin-bottom:10px;">
+          One-tap summary of all balances and how you’re doing — ready to text or email.
+        </p>
+        <button class="btn" onclick="generateShareReport()">Generate Report for Wife</button>
+        <button class="btn secondary" id="btn-copy-report" style="display:none;margin-top:8px;" onclick="copyShareReport()">Copy to Clipboard</button>
+        <button class="btn secondary" id="btn-share-report" style="display:none;margin-top:8px;" onclick="nativeShareReport()">Share…</button>
+        <pre id="share-report-preview" class="hidden" style="margin-top:12px;padding:12px;background:var(--bg);border-radius:10px;font-size:0.78rem;white-space:pre-wrap;word-break:break-word;max-height:280px;overflow-y:auto;border:1px solid var(--border);color:var(--text);"></pre>
+      </div>
+
+      <div class="card">
+        <h2><span class="dot" style="background:var(--muted)"></span> Past Audits</h2>
+        <div id="audit-history"></div>
+      </div>
+    </div>
+
+    <!-- ========== BUDGET TAB ========== -->
+    <div id="tab-budget" class="hidden">
+      <div class="card">
+        <h2><span class="dot" style="background:var(--green)"></span> Housing</h2>
+        <ul class="item-list" id="list-housing"></ul>
+        <button class="btn secondary small" onclick="openModal('housing')">+ Add Housing</button>
+      </div>
+      <div class="card">
+        <h2><span class="dot" style="background:var(--accent)"></span> Recurring Bills</h2>
+        <p style="font-size:0.8rem;color:var(--muted);margin-bottom:10px;">
+          Mark utilities as <strong>Variable</strong> so you can update gas, electric, water, etc. each month (💵 button or weekly audit).
+        </p>
+        <ul class="item-list" id="list-bills"></ul>
+        <button class="btn secondary small" onclick="openModal('bills')">+ Add Bill</button>
+      </div>
+      <div class="card">
+        <h2><span class="dot" style="background:var(--purple)"></span> Everyday Spending (monthly targets)</h2>
+        <ul class="item-list" id="list-everyday"></ul>
+        <button class="btn secondary small" onclick="openModal('everyday')">+ Add Category</button>
+      </div>
+    </div>
+
+    <!-- ========== DEBTS TAB ========== -->
+    <div id="tab-debts" class="hidden">
+      <div class="card">
+        <h2><span class="dot" style="background:var(--rose)"></span> Debts</h2>
+        <p style="font-size:0.8rem;color:var(--muted);margin-bottom:10px;">Credit cards are prioritized after the cushion is built. Minimums are always paid first.</p>
+        <ul class="item-list" id="list-debts"></ul>
+        <button class="btn secondary small" onclick="openModal('debts')">+ Add Debt</button>
+      </div>
+    </div>
+
+    <!-- ========== GOALS TAB ========== -->
+    <div id="tab-goals" class="hidden">
+      <div class="card">
+        <h2><span class="dot" style="background:var(--green)"></span> Cash Cushion & Goals</h2>
+        <p style="font-size:0.8rem;color:var(--muted);margin-bottom:10px;">
+          Set a <strong>monthly contribution</strong> for each goal. Paychecks only set aside that amount (split across the 10th & 25th)—not everything left over.
+        </p>
+        <ul class="item-list" id="list-goals"></ul>
+        <button class="btn secondary small" onclick="openModal('goals')">+ Add Goal</button>
+      </div>
+      <div class="card">
+        <h2><span class="dot" style="background:var(--accent)"></span> Bank Accounts</h2>
+        <p style="font-size:0.8rem;color:var(--muted);margin-bottom:10px;">
+          Mark one as <strong>Bill-pay</strong> (usually checking). Allocation uses that balance so the 10th check covers mortgage if you don’t already have enough set aside.
+        </p>
+        <ul class="item-list" id="list-accounts"></ul>
+        <button class="btn secondary small" onclick="openModal('accounts')">+ Add Account</button>
+      </div>
+      <div class="card">
+        <h2><span class="dot" style="background:var(--amber)"></span> Income Sources</h2>
+        <ul class="item-list" id="list-income"></ul>
+        <button class="btn secondary small" onclick="openModal('income')">+ Add Income</button>
+      </div>
+    </div>
+
+    <!-- ========== SETTINGS TAB ========== -->
+    <div id="tab-settings" class="hidden">
+      <div class="card">
+        <h2>Pay Schedule</h2>
+        <p style="font-size:0.8rem;color:var(--muted);margin-bottom:10px;">
+          Advance on the 25th, main paycheck on the 10th.
+        </p>
+        <label>Advance amount on the 25th ($)</label>
+        <input type="number" id="setting-advance-amount" inputmode="decimal" step="0.01" min="0" onchange="setAdvanceAmount(this.value)" />
+        <p class="tip" style="margin-top:10px;">Pre-fills when you select “Advance” on the Allocate tab.</p>
+      </div>
+      <div class="card">
+        <h2>Reminders & Calendar</h2>
+        <label>Preferred weekly audit day</label>
+        <select id="setting-audit-day" onchange="setAuditDay(this.value)">
+          <option value="0">Sunday</option>
+          <option value="1">Monday</option>
+          <option value="2">Tuesday</option>
+          <option value="3">Wednesday</option>
+          <option value="4">Thursday</option>
+          <option value="5">Friday</option>
+          <option value="6">Saturday</option>
+        </select>
+        <p class="tip" style="margin-top:10px;">Shown in Coming Up. Export below adds real alerts in Apple Calendar.</p>
+        <button class="btn secondary" style="margin-top:12px" onclick="exportCalendar()">Export Calendar (.ics)</button>
+        <p style="font-size:0.75rem;color:var(--muted);margin-top:8px;">
+          Opens/downloads an .ics file with upcoming bill due dates, pay days, + weekly audit for the next 3 months.
+        </p>
+      </div>
+      <div class="card">
+        <h2>Data</h2>
+        <button class="btn secondary" onclick="exportData()">Export Backup (JSON)</button>
+        <button class="btn secondary" onclick="document.getElementById('import-file').click()">Import Backup</button>
+        <input type="file" id="import-file" accept=".json" class="hidden" onchange="importData(event)" />
+        <button class="btn danger" style="margin-top:16px" onclick="if(confirm('Erase ALL data? This cannot be undone.')){clearAll();}">Clear All Data</button>
+      </div>
+      <div class="card">
+        <h2>About</h2>
+        <p style="font-size:0.85rem;color:var(--muted);">
+          Everything stays on your phone (localStorage). No accounts, no cloud.<br><br>
+          <strong>How it works:</strong><br>
+          1. Add housing, bills (with due days), debts, and goals.<br>
+          2. Enter a paycheck and generate the split plan.<br>
+          3. Build the house + baby cushion, then attack credit cards.<br>
+          4. Mark bills paid with ✅ as you pay them.<br>
+          5. Weekly Audit + share report with your wife.<br>
+          6. Export calendar for real iPhone alerts.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal -->
+  <div id="modal-overlay" class="modal-overlay hidden" onclick="if(event.target===this)closeModal()">
+    <div class="modal" id="modal-content"></div>
+  </div>
+
+  <script>
+    // ========== STATE ==========
+    const DEFAULT = {
+      phase: 'cushion',
+      payFrequency: 24, // 2 pays/month (10th + 25th)
+      auditDay: 5, // 0=Sun … 5=Fri … 6=Sat
+      // Custom pay schedule: advance on 25th, main on 10th
+      paySchedule: {
+        enabled: true,
+        advanceDay: 25,
+        advanceAmount: 3000,
+        advanceLabel: 'Advance (25th)',
+        mainDay: 10,
+        mainLabel: 'Main paycheck (10th)'
+      },
+      housing: [],
+      bills: [],
+      debts: [],
+      goals: [
+        { id: 'cushion', name: 'House + Baby Cash Cushion', target: 10000, current: 0, isPrimary: true, monthlyContribute: 200 }
+      ],
+      everyday: [],
+      income: [],
+      accounts: [], // { id, name, type: checking|savings|other, balance, isBillPay }
+      audits: []
+    };
+
+    let state = load();
+
+    function load() {
+      try {
+        const raw = localStorage.getItem('paycheckPlanner');
+        if (!raw) return structuredClone(DEFAULT);
+        const parsed = JSON.parse(raw);
+        const merged = { ...structuredClone(DEFAULT), ...parsed };
+        if (!merged.paySchedule) merged.paySchedule = structuredClone(DEFAULT.paySchedule);
+        else merged.paySchedule = { ...structuredClone(DEFAULT.paySchedule), ...merged.paySchedule };
+        if (!merged.accounts) merged.accounts = [];
+        if (merged.goals && Array.isArray(merged.goals)) {
+          merged.goals.forEach(g => {
+            if (g.monthlyContribute == null) g.monthlyContribute = g.isPrimary ? 200 : 0;
+          });
+        }
+        return merged;
+      } catch {
+        return structuredClone(DEFAULT);
+      }
+    }
+
+    function save() {
+      localStorage.setItem('paycheckPlanner', JSON.stringify(state));
+      renderAll();
+    }
+
+    function uid() {
+      return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+    }
+
+    // ========== TABS ==========
+    function switchTab(name) {
+      ['allocate','audit','budget','debts','goals','settings'].forEach(t => {
+        const el = document.getElementById('tab-' + t);
+        if (el) el.classList.toggle('hidden', t !== name);
+      });
+      document.querySelectorAll('.nav button').forEach(b => {
+        b.classList.toggle('active', b.dataset.tab === name);
+      });
+      if (name === 'allocate') updateQuickStats();
+      if (name === 'audit') prepareAuditForm();
+    }
+
+    // ========== PHASE ==========
+    function setPhase(p) {
+      state.phase = p;
+      document.getElementById('phase-cushion').classList.toggle('active', p === 'cushion');
+      document.getElementById('phase-debt').classList.toggle('active', p === 'debt');
+      const tip = document.getElementById('phase-tip');
+      if (p === 'cushion') {
+        tip.textContent = 'Right now: cover minimums + grow your house & baby cash cushion. Extra goes to cushion until you switch modes.';
+        document.getElementById('header-sub').textContent = 'Build cushion → then attack debt';
+      } else {
+        tip.textContent = 'Cushion mode off. Minimums still paid first. All extra goes to credit cards first, then other debts (highest balance or rate first).';
+        document.getElementById('header-sub').textContent = 'Attacking debt — credit cards first';
+      }
+      save();
+    }
+
+    // ========== RENDER LISTS ==========
+    function money(n) {
+      return '$' + (Number(n) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function deltaStr(n) {
+      const v = Number(n) || 0;
+      if (Math.abs(v) < 0.005) return '<span class="delta-flat">$0.00</span>';
+      if (v > 0) return '<span class="delta-up">+' + money(v) + '</span>';
+      return '<span class="delta-down">' + money(v) + '</span>';
+    }
+
+    function renderList(key, containerId, formatter) {
+      const el = document.getElementById(containerId);
+      if (!el) return;
+      const items = state[key] || [];
+      if (!items.length) {
+        el.innerHTML = '<li class="empty">Nothing added yet</li>';
+        return;
+      }
+      el.innerHTML = items.map(item => `
+        <li class="item">
+          <div class="item-info">
+            <div class="item-name">${escapeHtml(item.name)}</div>
+            <div class="item-meta">${formatter(item)}</div>
+          </div>
+          <div class="item-amount">${money(item.amount || item.minPayment || item.target || 0)}</div>
+          <div class="item-actions">
+            <button class="icon-btn" onclick="editItem('${key}','${item.id}')">✏️</button>
+            <button class="icon-btn" onclick="deleteItem('${key}','${item.id}')">🗑️</button>
+          </div>
+        </li>
+      `).join('');
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function periodKey(d = new Date()) {
+      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+    }
+
+    function isPaidThisPeriod(item) {
+      return item.paidPeriod === periodKey();
+    }
+
+    function nextDueDate(dueDay, from = new Date()) {
+      if (!dueDay || dueDay < 1 || dueDay > 31) return null;
+      const y = from.getFullYear();
+      const m = from.getMonth();
+      const daysInMonth = (yy, mm) => new Date(yy, mm + 1, 0).getDate();
+      let day = Math.min(dueDay, daysInMonth(y, m));
+      let candidate = new Date(y, m, day);
+      // start of today
+      const today = new Date(from.getFullYear(), from.getMonth(), from.getDate());
+      if (candidate < today) {
+        // next month
+        const nm = m + 1;
+        const ny = nm > 11 ? y + 1 : y;
+        const realM = nm % 12;
+        day = Math.min(dueDay, daysInMonth(ny, realM));
+        candidate = new Date(ny, realM, day);
+      }
+      return candidate;
+    }
+
+    function daysUntil(date) {
+      if (!date) return null;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const d = new Date(date);
+      d.setHours(0, 0, 0, 0);
+      return Math.round((d - today) / 86400000);
+    }
+
+    function formatShortDate(d) {
+      if (!d) return '';
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
+
+    function renderBillsList() {
+      const el = document.getElementById('list-bills');
+      if (!el) return;
+      const items = state.bills || [];
+      if (!items.length) {
+        el.innerHTML = '<li class="empty">Nothing added yet</li>';
+        return;
+      }
+      el.innerHTML = items.map(item => {
+        const isVar = !!item.variable;
+        const paid = isPaidThisPeriod(item);
+        const due = item.dueDay ? nextDueDate(item.dueDay) : null;
+        const du = due ? daysUntil(due) : null;
+        let dueMeta = isVar ? 'Variable · this month' : 'Fixed monthly';
+        if (item.dueDay) {
+          dueMeta += ' · due ' + item.dueDay + (due ? ' (' + formatShortDate(due) + ')' : '');
+        }
+        return `
+          <li class="item" style="${paid ? 'opacity:0.55;' : ''}">
+            <div class="item-info">
+              <div class="item-name">${paid ? '✓ ' : ''}${escapeHtml(item.name)}
+                <span class="badge ${isVar ? 'amber' : 'sky'}">${isVar ? 'Variable' : 'Fixed'}</span>
+                ${paid ? '<span class="badge green">Paid</span>' : ''}
+              </div>
+              <div class="item-meta">${dueMeta}</div>
+            </div>
+            <div class="item-amount">${money(item.amount || 0)}</div>
+            <div class="item-actions">
+              <button class="icon-btn" title="${paid ? 'Mark unpaid' : 'Mark paid'}" onclick="togglePaid('bills','${item.id}')">${paid ? '↩️' : '✅'}</button>
+              ${isVar ? `<button class="icon-btn" title="Update amount" onclick="quickUpdateBill('${item.id}')">💵</button>` : ''}
+              <button class="icon-btn" onclick="editItem('bills','${item.id}')">✏️</button>
+              <button class="icon-btn" onclick="deleteItem('bills','${item.id}')">🗑️</button>
+            </div>
+          </li>
+        `;
+      }).join('');
+    }
+
+    function togglePaid(key, id) {
+      const item = state[key].find(x => x.id === id);
+      if (!item) return;
+      if (isPaidThisPeriod(item)) {
+        item.paidPeriod = null;
+      } else {
+        item.paidPeriod = periodKey();
+      }
+      save();
+    }
+
+    function quickUpdateBill(id) {
+      const bill = state.bills.find(b => b.id === id);
+      if (!bill) return;
+      const val = prompt('Update amount for "' + bill.name + '" this month ($):', bill.amount || 0);
+      if (val === null) return;
+      const n = Number(val);
+      if (isNaN(n) || n < 0) {
+        alert('Enter a valid amount');
+        return;
+      }
+      bill.amount = n;
+      save();
+    }
+
+    function renderHousingList() {
+      const el = document.getElementById('list-housing');
+      if (!el) return;
+      const items = state.housing || [];
+      if (!items.length) {
+        el.innerHTML = '<li class="empty">Nothing added yet</li>';
+        return;
+      }
+      el.innerHTML = items.map(item => {
+        const paid = isPaidThisPeriod(item);
+        const due = item.dueDay ? nextDueDate(item.dueDay) : null;
+        let meta = 'Monthly';
+        if (item.dueDay) meta += ' · due day ' + item.dueDay + (due ? ' (' + formatShortDate(due) + ')' : '');
+        return `
+          <li class="item" style="${paid ? 'opacity:0.55;' : ''}">
+            <div class="item-info">
+              <div class="item-name">${paid ? '✓ ' : ''}${escapeHtml(item.name)}
+                ${paid ? '<span class="badge green">Paid</span>' : ''}
+              </div>
+              <div class="item-meta">${meta}</div>
+            </div>
+            <div class="item-amount">${money(item.amount || 0)}</div>
+            <div class="item-actions">
+              <button class="icon-btn" title="${paid ? 'Mark unpaid' : 'Mark paid'}" onclick="togglePaid('housing','${item.id}')">${paid ? '↩️' : '✅'}</button>
+              <button class="icon-btn" onclick="editItem('housing','${item.id}')">✏️</button>
+              <button class="icon-btn" onclick="deleteItem('housing','${item.id}')">🗑️</button>
+            </div>
+          </li>
+        `;
+      }).join('');
+    }
+
+    function renderAccountsList() {
+      const el = document.getElementById('list-accounts');
+      if (!el) return;
+      const items = state.accounts || [];
+      if (!items.length) {
+        el.innerHTML = '<li class="empty">Add checking/savings so allocation knows what you already have</li>';
+        return;
+      }
+      el.innerHTML = items.map(a => `
+        <li class="item">
+          <div class="item-info">
+            <div class="item-name">${escapeHtml(a.name)}
+              <span class="badge sky">${a.type || 'checking'}</span>
+              ${a.isBillPay ? '<span class="badge green">Bill-pay</span>' : ''}
+            </div>
+            <div class="item-meta">${a.isBillPay ? 'Used to cover bills before next pay' : 'Balance tracked'}</div>
+          </div>
+          <div class="item-amount">${money(a.balance || 0)}</div>
+          <div class="item-actions">
+            <button class="icon-btn" title="Update balance" onclick="quickUpdateAccount('${a.id}')">💵</button>
+            <button class="icon-btn" onclick="editItem('accounts','${a.id}')">✏️</button>
+            <button class="icon-btn" onclick="deleteItem('accounts','${a.id}')">🗑️</button>
+          </div>
+        </li>
+      `).join('');
+    }
+
+    function quickUpdateAccount(id) {
+      const a = (state.accounts || []).find(x => x.id === id);
+      if (!a) return;
+      const val = prompt('Update balance for "' + a.name + '" ($):', a.balance || 0);
+      if (val === null) return;
+      const n = Number(val);
+      if (isNaN(n) || n < 0) { alert('Enter a valid amount'); return; }
+      a.balance = n;
+      save();
+    }
+
+    function billPayBalance() {
+      const accounts = state.accounts || [];
+      const marked = accounts.filter(a => a.isBillPay);
+      if (marked.length) return marked.reduce((s, a) => s + (Number(a.balance) || 0), 0);
+      // fallback: all checking
+      const checking = accounts.filter(a => a.type === 'checking');
+      if (checking.length) return checking.reduce((s, a) => s + (Number(a.balance) || 0), 0);
+      return accounts.reduce((s, a) => s + (Number(a.balance) || 0), 0);
+    }
+
+    function nextPayDate(from = new Date()) {
+      const sched = state.paySchedule || DEFAULT.paySchedule;
+      const d10 = nextDueDate(sched.mainDay || 10, from);
+      const d25 = nextDueDate(sched.advanceDay || 25, from);
+      if (!d10) return d25;
+      if (!d25) return d10;
+      return d10 <= d25 ? d10 : d25;
+    }
+
+    function upcomingObligations(horizonDays = 40) {
+      // All unpaid housing, bills, and debt minimums due within horizonDays
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const horizon = new Date(today);
+      horizon.setDate(horizon.getDate() + horizonDays);
+
+      const details = [];
+
+      function addItem(name, amount, due, category, id, key) {
+        const amt = Number(amount) || 0;
+        if (amt <= 0) return;
+        details.push({ name, amount: amt, due, category, id, key, days: due ? daysUntil(due) : 999 });
+      }
+
+      (state.housing || []).forEach(h => {
+        if (isPaidThisPeriod(h)) return;
+        if (h.dueDay) {
+          const due = nextDueDate(h.dueDay);
+          if (due && due <= horizon) addItem(h.name, h.amount, due, 'housing', h.id, 'housing');
+        } else {
+          // No due day: treat as needed within ~30 days (must still be funded)
+          const due = new Date(today);
+          due.setDate(due.getDate() + 14);
+          if (due <= horizon) addItem(h.name, h.amount, due, 'housing', h.id, 'housing');
+        }
+      });
+
+      (state.bills || []).forEach(b => {
+        if (isPaidThisPeriod(b)) return;
+        if (b.dueDay) {
+          const due = nextDueDate(b.dueDay);
+          if (due && due <= horizon) addItem(b.name, b.amount, due, 'bills', b.id, 'bills');
+        } else {
+          const due = new Date(today);
+          due.setDate(due.getDate() + 14);
+          if (due <= horizon) addItem(b.name, b.amount, due, 'bills', b.id, 'bills');
+        }
+      });
+
+      (state.debts || []).forEach(d => {
+        if (isPaidThisPeriod(d)) return;
+        const min = Number(d.minPayment) || 0;
+        if (min <= 0) return;
+        if (d.dueDay) {
+          const due = nextDueDate(d.dueDay);
+          if (due && due <= horizon) addItem(d.name + ' (min)', min, due, 'debt', d.id, 'debts');
+        } else {
+          // No due day: still need to fund minimum this month
+          const due = new Date(today);
+          due.setDate(due.getDate() + 14);
+          if (due <= horizon) addItem(d.name + ' (min)', min, due, 'debt', d.id, 'debts');
+        }
+      });
+
+      details.sort((a, b) => a.days - b.days);
+      const total = details.reduce((s, d) => s + d.amount, 0);
+      return { total, details };
+    }
+
+    // How much of upcoming obligations is NOT yet covered by bill-pay balance
+    function fundingNeed(horizonDays = 40) {
+      const oblig = upcomingObligations(horizonDays);
+      const available = billPayBalance();
+      let left = available;
+      let needHousing = 0, needBills = 0, needDebt = 0;
+      const uncovered = [];
+
+      oblig.details.forEach(d => {
+        if (left >= d.amount) {
+          left -= d.amount;
+        } else {
+          const short = d.amount - left;
+          left = 0;
+          uncovered.push({ ...d, short });
+          if (d.category === 'housing') needHousing += short;
+          else if (d.category === 'bills') needBills += short;
+          else if (d.category === 'debt') needDebt += short;
+        }
+      });
+
+      return {
+        oblig,
+        available,
+        shortfall: Math.max(0, oblig.total - available),
+        needHousing: round2(needHousing),
+        needBills: round2(needBills),
+        needDebt: round2(needDebt),
+        uncovered
+      };
+    }
+
+    function obligationsDueBefore(beforeDate) {
+      // kept for compatibility — prefer upcomingObligations / fundingNeed
+      const all = upcomingObligations(45);
+      const details = all.details.filter(d => d.due && beforeDate && d.due <= beforeDate);
+      const total = details.reduce((s, d) => s + d.amount, 0);
+      return { total, details };
+    }
+
+    function renderComingUp() {
+      const el = document.getElementById('coming-up-list');
+      if (!el) return;
+
+      const items = [];
+      const dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+
+      const now = new Date();
+
+      // Next pay dates (10th main, 25th advance)
+      const sched = state.paySchedule || DEFAULT.paySchedule;
+      if (sched && sched.enabled !== false) {
+        [ { day: sched.advanceDay || 25, label: sched.advanceLabel || 'Advance', amount: sched.advanceAmount || 3000 },
+          { day: sched.mainDay || 10, label: sched.mainLabel || 'Main paycheck', amount: null }
+        ].forEach(p => {
+          const due = nextDueDate(p.day, now);
+          if (!due) return;
+          items.push({
+            kind: 'pay',
+            label: p.label,
+            date: due,
+            days: daysUntil(due),
+            amount: p.amount,
+            paid: false,
+            id: null,
+            key: null
+          });
+        });
+      }
+
+      // Weekly audit
+      const auditDay = state.auditDay != null ? state.auditDay : 5;
+      const todayDow = now.getDay();
+      let daysToAudit = (auditDay - todayDow + 7) % 7;
+      const auditDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + daysToAudit);
+      items.push({
+        kind: 'audit',
+        label: 'Weekly money audit',
+        date: auditDate,
+        days: daysToAudit,
+        amount: null,
+        paid: false,
+        id: null,
+        key: null
+      });
+
+      // Housing + bills + debt mins with due days
+      [...(state.housing || []).map(h => ({ ...h, _key: 'housing', _amount: h.amount })),
+       ...(state.bills || []).map(b => ({ ...b, _key: 'bills', _amount: b.amount })),
+       ...(state.debts || []).map(d => ({ ...d, _key: 'debts', _amount: d.minPayment, name: d.name + ' (min)' }))
+      ].forEach(item => {
+        if (!item.dueDay) return;
+        const due = nextDueDate(item.dueDay);
+        if (!due) return;
+        const du = daysUntil(due);
+        items.push({
+          kind: 'bill',
+          label: item.name,
+          date: due,
+          days: du,
+          amount: item._amount,
+          paid: isPaidThisPeriod(item),
+          id: item.id,
+          key: item._key,
+          variable: !!item.variable
+        });
+      });
+
+      items.sort((a, b) => a.days - b.days);
+
+      if (!items.length) {
+        el.innerHTML = '<p class="empty" style="padding:8px 0;">Add due days on bills/housing to see what’s coming up.</p>';
+        return;
+      }
+
+      el.innerHTML = items.map(it => {
+        let when;
+        if (it.days === 0) when = '<span class="badge rose">Today</span>';
+        else if (it.days === 1) when = '<span class="badge amber">Tomorrow</span>';
+        else if (it.days <= 7) when = '<span class="badge sky">In ' + it.days + ' days</span>';
+        else when = '<span class="badge" style="background:rgba(148,163,184,0.15);color:var(--muted)">' + formatShortDate(it.date) + '</span>';
+
+        const paidBadge = it.paid ? '<span class="badge green">Paid</span>' : '';
+        const amt = it.amount != null ? '<span class="item-amount">' + money(it.amount) + '</span>' : '';
+        const actions = (it.kind === 'bill' && it.id)
+          ? `<button class="icon-btn" title="${it.paid ? 'Mark unpaid' : 'Mark paid'}" onclick="togglePaid('${it.key}','${it.id}')">${it.paid ? '↩️' : '✅'}</button>`
+          : (it.kind === 'audit'
+            ? `<button class="btn small secondary" style="margin:0;padding:6px 10px;" onclick="switchTab('audit')">Audit</button>`
+            : '');
+
+        return `
+          <div class="item" style="${it.paid ? 'opacity:0.5;' : ''}">
+            <div class="item-info">
+              <div class="item-name">${it.paid ? '✓ ' : ''}${escapeHtml(it.label)} ${paidBadge}</div>
+              <div class="item-meta">${when} · ${formatShortDate(it.date)}${it.kind === 'audit' ? ' · ' + dayNames[auditDay] : ''}</div>
+            </div>
+            ${amt}
+            <div class="item-actions">${actions}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderAll() {
+      renderHousingList();
+      renderBillsList();
+      renderList('everyday', 'list-everyday', i => 'Monthly target');
+      renderList('income', 'list-income', i => (i.frequency || 'per paycheck'));
+      renderAccountsList();
+      renderComingUp();
+
+      // Debts special
+      const dEl = document.getElementById('list-debts');
+      if (dEl) {
+        if (!state.debts.length) {
+          dEl.innerHTML = '<li class="empty">No debts added</li>';
+        } else {
+          dEl.innerHTML = state.debts.map(d => {
+            const paid = isPaidThisPeriod(d);
+            const due = d.dueDay ? nextDueDate(d.dueDay) : null;
+            let meta = 'Balance ' + money(d.balance) + ' · Min ' + money(d.minPayment);
+            if (d.rate) meta += ' · ' + d.rate + '%';
+            if (d.dueDay) meta += ' · due ' + d.dueDay + (due ? ' (' + formatShortDate(due) + ')' : '');
+            return `
+            <li class="item" style="${paid ? 'opacity:0.55;' : ''}">
+              <div class="item-info">
+                <div class="item-name">${paid ? '✓ ' : ''}${escapeHtml(d.name)}
+                  <span class="badge ${d.type === 'credit' ? 'rose' : 'amber'}">${d.type === 'credit' ? 'Credit Card' : 'Other Debt'}</span>
+                  ${paid ? '<span class="badge green">Min paid</span>' : ''}
+                </div>
+                <div class="item-meta">${meta}</div>
+              </div>
+              <div class="item-actions">
+                <button class="icon-btn" title="${paid ? 'Mark unpaid' : 'Mark min paid'}" onclick="togglePaid('debts','${d.id}')">${paid ? '↩️' : '✅'}</button>
+                <button class="icon-btn" onclick="editItem('debts','${d.id}')">✏️</button>
+                <button class="icon-btn" onclick="deleteItem('debts','${d.id}')">🗑️</button>
+              </div>
+            </li>
+          `}).join('');
+        }
+      }
+
+      // Goals special
+      const gEl = document.getElementById('list-goals');
+      if (gEl) {
+        if (!state.goals.length) {
+          gEl.innerHTML = '<li class="empty">No goals yet</li>';
+        } else {
+          gEl.innerHTML = state.goals.map(g => {
+            const pct = g.target > 0 ? Math.min(100, Math.round((g.current / g.target) * 1000) / 10) : 0;
+            const fillClass = pct >= 100 ? '' : (pct >= 50 ? 'sky' : (pct >= 25 ? 'amber' : 'rose'));
+            return `
+              <li class="item" style="flex-direction:column;align-items:stretch;">
+                <div style="display:flex;justify-content:space-between;width:100%;">
+                  <div class="item-info">
+                    <div class="item-name">${escapeHtml(g.name)} ${g.isPrimary ? '<span class="badge green">Primary</span>' : ''}</div>
+                    <div class="item-meta">${money(g.current)} of ${money(g.target)} · ${money(g.monthlyContribute != null ? g.monthlyContribute : 0)}/mo</div>
+                  </div>
+                  <div class="item-actions">
+                    <button class="icon-btn" onclick="editItem('goals','${g.id}')">✏️</button>
+                    ${!g.isPrimary ? `<button class="icon-btn" onclick="deleteItem('goals','${g.id}')">🗑️</button>` : ''}
+                  </div>
+                </div>
+                <div class="progress-wrap">
+                  <div class="progress-header"><span>Progress</span><span class="pct">${pct}%</span></div>
+                  <div class="progress-bar"><div class="progress-fill ${fillClass}" style="width:${Math.min(100, pct)}%"></div></div>
+                </div>
+              </li>
+            `;
+          }).join('');
+        }
+      }
+
+      // Phase UI
+      const pc = document.getElementById('phase-cushion');
+      const pd = document.getElementById('phase-debt');
+      if (pc && pd) {
+        pc.classList.toggle('active', state.phase === 'cushion');
+        pd.classList.toggle('active', state.phase === 'debt');
+      }
+      // refresh tip without recursive save
+      const tip = document.getElementById('phase-tip');
+      const sub = document.getElementById('header-sub');
+      if (tip && sub) {
+        if (state.phase === 'cushion') {
+          tip.textContent = 'Right now: cover minimums + grow your house & baby cash cushion. Extra goes to cushion until you switch modes.';
+          sub.textContent = 'Build cushion → then attack debt';
+        } else {
+          tip.textContent = 'Cushion mode off. Minimums still paid first. All extra goes to credit cards first, then other debts (highest balance or rate first).';
+          sub.textContent = 'Attacking debt — credit cards first';
+        }
+      }
+
+      const ad = document.getElementById('setting-audit-day');
+      if (ad) ad.value = String(state.auditDay != null ? state.auditDay : 5);
+
+      const adv = document.getElementById('setting-advance-amount');
+      if (adv) {
+        const sched = state.paySchedule || DEFAULT.paySchedule;
+        adv.value = sched.advanceAmount != null ? sched.advanceAmount : 3000;
+      }
+
+      updateQuickStats();
+      renderAuditHistory();
+      onPaycheckTypeChange();
+    }
+
+    function updateQuickStats() {
+      const el = document.getElementById('quick-stats');
+      if (!el) return;
+      const monthlyFixed = sum(state.housing, 'amount') + sum(state.bills, 'amount') + sum(state.debts, 'minPayment');
+      const perCheckFixed = monthlyFixed / 2; // 10th + 25th
+      const primary = state.goals.find(g => g.isPrimary) || state.goals[0];
+      const cushionLeft = primary ? Math.max(0, primary.target - primary.current) : 0;
+      const cushionPct = primary && primary.target > 0
+        ? Math.min(100, Math.round((primary.current / primary.target) * 1000) / 10)
+        : 0;
+      const totalDebt = sum(state.debts, 'balance');
+      const sched = state.paySchedule || DEFAULT.paySchedule;
+      const advanceAmt = sched.advanceAmount || 3000;
+      const fund = typeof fundingNeed === 'function' ? fundingNeed(40) : { oblig: { total: 0 }, available: 0, shortfall: 0 };
+      const obligTotal = fund.oblig?.total || 0;
+      const coveredPct = obligTotal > 0
+        ? Math.min(100, Math.round((Math.min(fund.available, obligTotal) / obligTotal) * 1000) / 10)
+        : 100;
+
+      el.innerHTML = `
+        <div class="summary-card">
+          <div class="label">Monthly Fixed</div>
+          <div class="value">${money(monthlyFixed)}</div>
+        </div>
+        <div class="summary-card">
+          <div class="label">~Half Fixed / Check</div>
+          <div class="value">${money(perCheckFixed)}</div>
+        </div>
+        <div class="summary-card">
+          <div class="label">Cushion Left</div>
+          <div class="value" style="color:var(--green)">${money(cushionLeft)}</div>
+        </div>
+        <div class="summary-card">
+          <div class="label">Total Debt</div>
+          <div class="value" style="color:var(--rose)">${money(totalDebt)}</div>
+        </div>
+        <div class="summary-card" style="grid-column:1/-1;">
+          <div class="label">House + Baby cushion</div>
+          <div class="progress-wrap">
+            <div class="progress-header"><span>${money(primary?.current || 0)} of ${money(primary?.target || 0)}</span><span class="pct">${cushionPct}%</span></div>
+            <div class="progress-bar"><div class="progress-fill ${cushionPct >= 100 ? '' : (cushionPct >= 50 ? 'sky' : 'amber')}" style="width:${cushionPct}%"></div></div>
+          </div>
+        </div>
+        <div class="summary-card" style="grid-column:1/-1;">
+          <div class="label">Bills covered by account (next ~40 days)</div>
+          <div class="progress-wrap">
+            <div class="progress-header"><span>${money(fund.available || 0)} vs ${money(obligTotal)} due</span><span class="pct">${coveredPct}%</span></div>
+            <div class="progress-bar"><div class="progress-fill ${coveredPct >= 100 ? '' : (coveredPct >= 50 ? 'amber' : 'rose')}" style="width:${coveredPct}%"></div></div>
+          </div>
+        </div>
+        <div class="summary-card" style="grid-column:1/-1;">
+          <div class="label">Pay schedule</div>
+          <div class="value" style="font-size:0.95rem;">25th: ${money(advanceAmt)} advance · 10th: main paycheck</div>
+        </div>
+      `;
+    }
+
+    function sum(arr, key) {
+      return (arr || []).reduce((s, i) => s + (Number(i[key]) || 0), 0);
+    }
+
+    // ========== MODAL CRUD ==========
+    let editing = null;
+
+    function openModal(key, id = null) {
+      editing = id ? { key, id } : { key, id: null };
+      const item = id ? state[key].find(x => x.id === id) : null;
+      const title = id ? 'Edit' : 'Add';
+      let fields = '';
+
+      if (key === 'everyday') {
+        fields = `
+          <label>Name</label>
+          <input id="m-name" value="${item ? escapeHtml(item.name) : ''}" placeholder="e.g. Groceries, Gas, Dining" />
+          <label>Monthly amount ($)</label>
+          <input id="m-amount" type="number" inputmode="decimal" step="0.01" min="0" value="${item ? item.amount : ''}" />
+        `;
+      } else if (key === 'bills') {
+        fields = `
+          <label>Name</label>
+          <input id="m-name" value="${item ? escapeHtml(item.name) : ''}" placeholder="e.g. Electric, Gas, Water, Internet" />
+          <label>Bill type</label>
+          <select id="m-bill-type">
+            <option value="fixed" ${item && !item.variable ? 'selected' : ''}>Fixed — same amount every month</option>
+            <option value="variable" ${item && item.variable ? 'selected' : ''}>Variable — changes monthly (gas, electric, water…)</option>
+          </select>
+          <label id="m-amount-label">${item && item.variable ? "This month’s amount ($)" : "Monthly amount ($)"}</label>
+          <input id="m-amount" type="number" inputmode="decimal" step="0.01" min="0" value="${item ? item.amount : ''}" />
+          <label>Due day of month (1–31, optional)</label>
+          <input id="m-due-day" type="number" inputmode="numeric" min="1" max="31" placeholder="e.g. 15" value="${item && item.dueDay ? item.dueDay : ''}" />
+          <p class="tip" style="margin-top:8px;">
+            Variable bills can be updated via the 💵 button or weekly audit. Due day powers the Coming Up list and calendar export.
+          </p>
+        `;
+      } else if (key === 'housing') {
+        fields = `
+          <label>Name</label>
+          <input id="m-name" value="${item ? escapeHtml(item.name) : ''}" placeholder="e.g. Mortgage / Rent" />
+          <label>Monthly amount ($)</label>
+          <input id="m-amount" type="number" inputmode="decimal" step="0.01" min="0" value="${item ? item.amount : ''}" />
+          <label>Due day of month (1–31, optional)</label>
+          <input id="m-due-day" type="number" inputmode="numeric" min="1" max="31" placeholder="e.g. 1" value="${item && item.dueDay ? item.dueDay : ''}" />
+        `;
+      } else if (key === 'debts') {
+        fields = `
+          <label>Name</label>
+          <input id="m-name" value="${item ? escapeHtml(item.name) : ''}" placeholder="e.g. Chase Sapphire" />
+          <label>Type</label>
+          <select id="m-type">
+            <option value="credit" ${item && item.type === 'credit' ? 'selected' : ''}>Credit Card</option>
+            <option value="other" ${item && item.type === 'other' ? 'selected' : ''}>Other Debt (car, student, personal…)</option>
+          </select>
+          <label>Current balance ($)</label>
+          <input id="m-balance" type="number" inputmode="decimal" step="0.01" min="0" value="${item ? item.balance : ''}" />
+          <label>Minimum payment ($ / month)</label>
+          <input id="m-min" type="number" inputmode="decimal" step="0.01" min="0" value="${item ? item.minPayment : ''}" />
+          <label>Payment due day of month (1–31)</label>
+          <input id="m-due-day" type="number" inputmode="numeric" min="1" max="31" placeholder="e.g. 15" value="${item && item.dueDay ? item.dueDay : ''}" />
+          <label>Interest rate % (optional)</label>
+          <input id="m-rate" type="number" inputmode="decimal" step="0.01" min="0" value="${item && item.rate != null ? item.rate : ''}" />
+          <p class="tip" style="margin-top:8px;">Due day helps Coming Up and paycheck planning set money aside before the payment is due.</p>
+        `;
+      } else if (key === 'goals') {
+        fields = `
+          <label>Name</label>
+          <input id="m-name" value="${item ? escapeHtml(item.name) : ''}" placeholder="e.g. Emergency Fund" ${item && item.isPrimary ? 'readonly' : ''} />
+          <label>Target amount ($)</label>
+          <input id="m-target" type="number" inputmode="decimal" step="0.01" min="0" value="${item ? item.target : ''}" />
+          <label>Current saved ($)</label>
+          <input id="m-current" type="number" inputmode="decimal" step="0.01" min="0" value="${item ? item.current : 0}" />
+          <label>Contribute per month ($)</label>
+          <input id="m-monthly" type="number" inputmode="decimal" step="0.01" min="0" value="${item && item.monthlyContribute != null ? item.monthlyContribute : 200}" />
+          <p class="tip" style="margin-top:8px;">
+            Each paycheck only puts aside about half of this (you get paid twice a month). Leftover after bills goes to flex — not the whole cushion target.
+          </p>
+        `;
+      } else if (key === 'income') {
+        fields = `
+          <label>Name</label>
+          <input id="m-name" value="${item ? escapeHtml(item.name) : ''}" placeholder="e.g. Primary Job" />
+          <label>Typical amount ($)</label>
+          <input id="m-amount" type="number" inputmode="decimal" step="0.01" min="0" value="${item ? item.amount : ''}" />
+          <label>Notes / frequency</label>
+          <input id="m-freq" value="${item ? escapeHtml(item.frequency || '') : ''}" placeholder="e.g. every other Friday" />
+        `;
+      } else if (key === 'accounts') {
+        fields = `
+          <label>Account name</label>
+          <input id="m-name" value="${item ? escapeHtml(item.name) : ''}" placeholder="e.g. Chase Checking" />
+          <label>Type</label>
+          <select id="m-acct-type">
+            <option value="checking" ${!item || item.type === 'checking' ? 'selected' : ''}>Checking</option>
+            <option value="savings" ${item && item.type === 'savings' ? 'selected' : ''}>Savings</option>
+            <option value="other" ${item && item.type === 'other' ? 'selected' : ''}>Other</option>
+          </select>
+          <label>Current balance ($)</label>
+          <input id="m-balance" type="number" inputmode="decimal" step="0.01" min="0" value="${item ? item.balance : ''}" />
+          <label>Bill-pay account?</label>
+          <select id="m-bill-pay">
+            <option value="yes" ${item && item.isBillPay ? 'selected' : ''}>Yes — use this balance when planning bill coverage</option>
+            <option value="no" ${!item || !item.isBillPay ? 'selected' : ''}>No</option>
+          </select>
+          <p class="tip" style="margin-top:8px;">Mark your main checking as bill-pay so the app knows if mortgage is already covered before the 10th.</p>
+        `;
+      }
+
+      document.getElementById('modal-content').innerHTML = `
+        <h3>${title} ${key.charAt(0).toUpperCase() + key.slice(1)}</h3>
+        ${fields}
+        <div class="modal-actions">
+          <button class="btn secondary" onclick="closeModal()">Cancel</button>
+          <button class="btn" onclick="saveModal('${key}')">Save</button>
+        </div>
+      `;
+      document.getElementById('modal-overlay').classList.remove('hidden');
+      setTimeout(() => {
+        const first = document.getElementById('m-name');
+        if (first) first.focus();
+      }, 100);
+    }
+
+    function closeModal() {
+      document.getElementById('modal-overlay').classList.add('hidden');
+      editing = null;
+    }
+
+    function saveModal(key) {
+      const name = (document.getElementById('m-name')?.value || '').trim();
+      if (!name) { alert('Name is required'); return; }
+
+      let obj = { id: editing.id || uid(), name };
+
+      if (key === 'everyday') {
+        obj.amount = Number(document.getElementById('m-amount').value) || 0;
+      } else if (key === 'housing') {
+        obj.amount = Number(document.getElementById('m-amount').value) || 0;
+        const dd = document.getElementById('m-due-day')?.value;
+        obj.dueDay = dd ? Math.min(31, Math.max(1, parseInt(dd, 10) || 0)) || null : null;
+      } else if (key === 'bills') {
+        obj.amount = Number(document.getElementById('m-amount').value) || 0;
+        obj.variable = document.getElementById('m-bill-type')?.value === 'variable';
+        const dd = document.getElementById('m-due-day')?.value;
+        obj.dueDay = dd ? Math.min(31, Math.max(1, parseInt(dd, 10) || 0)) || null : null;
+      } else if (key === 'debts') {
+        obj.type = document.getElementById('m-type').value;
+        obj.balance = Number(document.getElementById('m-balance').value) || 0;
+        obj.minPayment = Number(document.getElementById('m-min').value) || 0;
+        const dd = document.getElementById('m-due-day')?.value;
+        obj.dueDay = dd ? Math.min(31, Math.max(1, parseInt(dd, 10) || 0)) || null : null;
+        const rate = document.getElementById('m-rate').value;
+        obj.rate = rate === '' ? null : Number(rate);
+      } else if (key === 'goals') {
+        obj.target = Number(document.getElementById('m-target').value) || 0;
+        obj.current = Number(document.getElementById('m-current').value) || 0;
+        obj.monthlyContribute = Number(document.getElementById('m-monthly')?.value) || 0;
+        if (editing.id) {
+          const existing = state.goals.find(g => g.id === editing.id);
+          if (existing && existing.isPrimary) obj.isPrimary = true;
+        }
+      } else if (key === 'income') {
+        obj.amount = Number(document.getElementById('m-amount').value) || 0;
+        obj.frequency = (document.getElementById('m-freq')?.value || '').trim();
+      } else if (key === 'accounts') {
+        obj.type = document.getElementById('m-acct-type')?.value || 'checking';
+        obj.balance = Number(document.getElementById('m-balance').value) || 0;
+        obj.isBillPay = document.getElementById('m-bill-pay')?.value === 'yes';
+        // Only one bill-pay preferred: if setting this as bill-pay, clear others
+        if (obj.isBillPay && state.accounts) {
+          state.accounts.forEach(a => {
+            if (a.id !== obj.id) a.isBillPay = false;
+          });
+        }
+      }
+
+      if (!state[key]) state[key] = [];
+      if (editing.id) {
+        const idx = state[key].findIndex(x => x.id === editing.id);
+        if (idx >= 0) state[key][idx] = { ...state[key][idx], ...obj };
+      } else {
+        state[key].push(obj);
+      }
+      save();
+      closeModal();
+    }
+
+    function editItem(key, id) {
+      openModal(key, id);
+    }
+
+    function deleteItem(key, id) {
+      if (!confirm('Delete this item?')) return;
+      state[key] = state[key].filter(x => x.id !== id);
+      save();
+    }
+
+    // ========== ALLOCATION ENGINE ==========
+    function onPaycheckTypeChange() {
+      const type = document.getElementById('paycheck-type')?.value;
+      const amt = document.getElementById('paycheck-amount');
+      const hint = document.getElementById('pay-hint');
+      const sched = state.paySchedule || DEFAULT.paySchedule;
+      if (type === 'advance') {
+        if (amt && (!amt.value || Number(amt.value) === 0 || Number(amt.value) === sched.advanceAmount)) {
+          amt.value = sched.advanceAmount;
+        } else if (amt && !amt.value) {
+          amt.value = sched.advanceAmount;
+        }
+        if (hint) hint.textContent = 'Advance (25th): $' + Number(sched.advanceAmount).toLocaleString() + ' flat. Use 50/50 or Advance-first so the 10th check isn’t overloaded with all the bills.';
+      } else if (type === 'main') {
+        if (hint) hint.textContent = 'Main paycheck (10th): enter the full amount deposited. This usually covers remaining bills + cushion/debt.';
+      } else {
+        if (hint) hint.textContent = 'One-off or other income — treated like a single pay period.';
+      }
+    }
+
+    function getPayShares(amount, payType, splitMethod) {
+      // Two pays per month: 25th advance + 10th main
+      const monthlyHousing = sum(state.housing, 'amount');
+      const monthlyBills = sum(state.bills, 'amount');
+      const monthlyDebtMin = sum(state.debts, 'minPayment');
+      const monthlyEveryday = sum(state.everyday, 'amount');
+      const monthlyFixed = monthlyHousing + monthlyBills + monthlyDebtMin;
+      const sched = state.paySchedule || DEFAULT.paySchedule;
+      const advanceAmt = Number(sched.advanceAmount) || 3000;
+
+      let fraction = 0.5; // default half of monthly fixed on this check
+
+      if (splitMethod === 'half') {
+        fraction = 0.5;
+      } else if (splitMethod === 'proportional') {
+        // Estimate monthly income = advance + this check (if main) or advance*2 rough
+        if (payType === 'advance') {
+          fraction = amount / (amount + amount); // unknown main → fall back half
+          fraction = 0.5;
+        } else if (payType === 'main') {
+          const totalEst = advanceAmt + amount;
+          fraction = totalEst > 0 ? amount / totalEst : 0.5;
+        } else {
+          fraction = 1; // other = full month share if only one check
+        }
+      } else if (splitMethod === 'advance-first') {
+        // Advance covers min(advance, monthlyFixed); main covers the remainder
+        if (payType === 'advance') {
+          const cover = Math.min(amount, monthlyFixed);
+          return {
+            shareHousing: monthlyFixed > 0 ? (cover * monthlyHousing / monthlyFixed) : 0,
+            shareBills: monthlyFixed > 0 ? (cover * monthlyBills / monthlyFixed) : 0,
+            shareDebtMin: monthlyFixed > 0 ? (cover * monthlyDebtMin / monthlyFixed) : 0,
+            shareEveryday: monthlyEveryday * 0.5,
+            note: 'advance covers first slice of monthly fixed'
+          };
+        } else if (payType === 'main') {
+          const alreadyOnAdvance = Math.min(advanceAmt, monthlyFixed);
+          const remainder = Math.max(0, monthlyFixed - alreadyOnAdvance);
+          return {
+            shareHousing: monthlyFixed > 0 ? (remainder * monthlyHousing / monthlyFixed) : monthlyHousing,
+            shareBills: monthlyFixed > 0 ? (remainder * monthlyBills / monthlyFixed) : monthlyBills,
+            shareDebtMin: monthlyFixed > 0 ? (remainder * monthlyDebtMin / monthlyFixed) : monthlyDebtMin,
+            shareEveryday: monthlyEveryday * 0.5,
+            note: 'remaining monthly fixed after advance'
+          };
+        } else {
+          fraction = 1;
+        }
+      }
+
+      if (payType === 'other') fraction = 1;
+
+      return {
+        shareHousing: monthlyHousing * fraction,
+        shareBills: monthlyBills * fraction,
+        shareDebtMin: monthlyDebtMin * fraction,
+        shareEveryday: monthlyEveryday * fraction,
+        note: splitMethod === 'half' ? 'half of monthly' : (splitMethod === 'proportional' ? 'proportional share' : 'full month')
+      };
+    }
+
+    function generatePlan() {
+      const amount = Number(document.getElementById('paycheck-amount').value);
+      if (!amount || amount <= 0) {
+        alert('Enter a paycheck amount first');
+        return;
+      }
+      const payType = document.getElementById('paycheck-type')?.value || 'main';
+      const splitMethod = document.getElementById('split-method')?.value || 'half';
+      state.payFrequency = 24;
+      save();
+
+      const shares = getPayShares(amount, payType, splitMethod);
+      let targetHousing = shares.shareHousing;
+      let targetBills = shares.shareBills;
+      let targetDebtMin = shares.shareDebtMin;
+      let targetEveryday = shares.shareEveryday;
+
+      // Fund obligations due in the next ~40 days (covers next mortgage even if after next paycheck)
+      const fund = fundingNeed(40);
+      const shortfall = fund.shortfall;
+
+      // Raise targets to at least what's still uncovered after bill-pay balance
+      targetDebtMin = Math.max(targetDebtMin, fund.needDebt);
+      targetHousing = Math.max(targetHousing, fund.needHousing);
+      targetBills = Math.max(targetBills, fund.needBills);
+
+      // Priority spend from this paycheck only — never more than remaining
+      // Order: debt mins due → housing due → bills due → cushion/extra debt → everyday → leftover
+      let remaining = round2(amount);
+      const alloc = [];
+
+      function take(label, target, color, note) {
+        const want = Math.max(0, Number(target) || 0);
+        const got = round2(Math.min(remaining, want));
+        if (got > 0.005) {
+          alloc.push({ label, amount: got, color, note });
+          remaining = round2(remaining - got);
+        }
+        return got;
+      }
+
+      // 1) Debt minimums (boosted if due soon and not covered by account)
+      take(
+        'Debt Minimums',
+        targetDebtMin,
+        'rose',
+        fund.needDebt > shares.shareDebtMin + 0.01 ? 'includes amounts due soon' : 'always first priority'
+      );
+
+      // 2) Housing — must cover mortgage shortfall
+      take(
+        'Housing (mortgage/rent, utilities…)',
+        targetHousing,
+        'green',
+        fund.needHousing > shares.shareHousing + 0.01 ? 'must be in account before due date' : shares.note
+      );
+
+      // 3) Recurring bills due soon
+      take(
+        'Recurring Bills',
+        targetBills,
+        'sky',
+        fund.needBills > shares.shareBills + 0.01 ? 'due soon — fund now' : shares.note
+      );
+
+      // 4) Goal contributions (monthly amount ÷ 2 pays) — not the full target
+      //    Then in debt phase, extra goes to credit cards first
+      const paysPerMonth = 2; // 10th + 25th
+      const goalsToFund = (state.goals || []).filter(g => {
+        const left = Math.max(0, (Number(g.target) || 0) - (Number(g.current) || 0));
+        const monthly = Number(g.monthlyContribute) || 0;
+        return left > 0.01 && monthly > 0.01;
+      });
+
+      // Primary cushion first (if any), then other goals
+      goalsToFund.sort((a, b) => (b.isPrimary ? 1 : 0) - (a.isPrimary ? 1 : 0));
+
+      if (state.phase === 'cushion' || goalsToFund.length) {
+        // Always allow the monthly goal contributions (even in debt phase if user set them)
+        // but in debt phase put goal contributions after a smaller priority - actually user asked cushion less priority
+        // Order: in cushion phase, fund goals at monthly rate then leftover is flex
+        // in debt phase: extra debt first, then optional goals
+        if (state.phase === 'cushion') {
+          goalsToFund.forEach(g => {
+            const left = Math.max(0, (Number(g.target) || 0) - (Number(g.current) || 0));
+            const perCheck = round2((Number(g.monthlyContribute) || 0) / paysPerMonth);
+            const want = Math.min(left, perCheck);
+            take(
+              g.name,
+              want,
+              g.isPrimary ? 'green' : 'purple',
+              money(g.monthlyContribute) + '/mo → ~' + money(perCheck) + '/check'
+            );
+          });
+        }
+      }
+
+      if (state.phase === 'debt') {
+        const debtsSorted = [...state.debts]
+          .filter(d => d.balance > 0)
+          .sort((a, b) => {
+            if (a.type === 'credit' && b.type !== 'credit') return -1;
+            if (b.type === 'credit' && a.type !== 'credit') return 1;
+            const ra = a.rate || 0, rb = b.rate || 0;
+            if (rb !== ra) return rb - ra;
+            return (b.balance || 0) - (a.balance || 0);
+          });
+        for (const d of debtsSorted) {
+          if (remaining < 0.01) break;
+          take(
+            'Extra → ' + d.name,
+            d.balance,
+            d.type === 'credit' ? 'rose' : 'amber',
+            d.type === 'credit' ? 'credit card priority' : 'other debt'
+          );
+        }
+        // Optional: still put small goal contributions after debt attack if money left
+        goalsToFund.forEach(g => {
+          const left = Math.max(0, (Number(g.target) || 0) - (Number(g.current) || 0));
+          const perCheck = round2((Number(g.monthlyContribute) || 0) / paysPerMonth);
+          const want = Math.min(left, perCheck);
+          take(g.name, want, 'purple', money(g.monthlyContribute) + '/mo');
+        });
+      }
+
+      // 5) Everyday + leftover
+      take('Everyday Spending', targetEveryday, 'purple', 'groceries, gas, dining…');
+      if (remaining > 0.005) {
+        take('Leftover / Flex', remaining, 'amber', 'buffer, fun, or extra savings');
+      }
+
+      // Sanity: allocated must equal paycheck (within a cent)
+      const totalAllocated = round2(alloc.reduce((s, l) => s + l.amount, 0));
+      const payLabel = payType === 'advance' ? 'Advance (25th)' : (payType === 'main' ? 'Main paycheck (10th)' : 'Other pay');
+      const mathOk = Math.abs(totalAllocated - amount) < 0.02;
+
+      // Context (NOT part of the paycheck total)
+      let contextHtml = '';
+      if ((state.accounts || []).length || fund.oblig.total > 0) {
+        const topDue = fund.uncovered.slice(0, 6).map(u =>
+          `<div class="alloc-row"><div class="label">${escapeHtml(u.name)}${u.due ? ' · ' + formatShortDate(u.due) : ''}</div><div class="amt">${money(u.short)} needed</div></div>`
+        ).join('');
+        contextHtml = `
+          <div class="card">
+            <h2>Cash-flow (next ~40 days)</h2>
+            <div class="alloc-row">
+              <div class="label">Bill-pay account balance</div>
+              <div class="amt">${money(fund.available)}</div>
+            </div>
+            <div class="alloc-row">
+              <div class="label">Obligations due soon (housing, bills, debt mins)</div>
+              <div class="amt">${money(fund.oblig.total)}</div>
+            </div>
+            <div class="alloc-row">
+              <div class="label">${shortfall > 0 ? 'Still need from paychecks' : 'Covered by account balance'}</div>
+              <div class="amt" style="color:${shortfall > 0 ? 'var(--amber)' : 'var(--green)'}">${money(shortfall)}</div>
+            </div>
+            ${(() => {
+              const cov = fund.oblig.total > 0 ? Math.min(100, Math.round((Math.min(fund.available, fund.oblig.total) / fund.oblig.total) * 1000) / 10) : 100;
+              return `<div class="progress-wrap">
+                <div class="progress-header"><span>Account covers due items</span><span class="pct">${cov}%</span></div>
+                <div class="progress-bar"><div class="progress-fill ${cov >= 100 ? '' : (cov >= 50 ? 'amber' : 'rose')}" style="width:${cov}%"></div></div>
+              </div>`;
+            })()}
+            ${topDue ? `<p class="section-label" style="margin-top:10px;">Uncovered (fund these first)</p>${topDue}` : ''}
+            ${shortfall > amount ? `<p class="tip bad" style="margin-top:10px;">Need ${money(shortfall)} but this check is only ${money(amount)}. Plan uses the full check on due items first; update account balance after deposit and run again if needed.</p>` : ''}
+            ${!(state.accounts || []).length ? `<p class="tip warn" style="margin-top:10px;">Add a bill-pay bank account (Goals tab) with the real balance for accurate mortgage coverage.</p>` : ''}
+          </div>
+        `;
+      }
+
+      const primary = state.goals.find(g => g.isPrimary) || state.goals[0];
+      const cushionLine = alloc.find(l => primary && l.label === primary.name);
+      let html = `
+        ${contextHtml}
+        <div class="result-box ${mathOk ? '' : 'warn'}">
+          <h3>${escapeHtml(payLabel)} — split of ${money(amount)}</h3>
+          ${alloc.map(l => {
+            const pct = amount > 0 ? Math.min(100, Math.round((l.amount / amount) * 1000) / 10) : 0;
+            const fill = l.color === 'rose' ? 'rose' : (l.color === 'amber' ? 'amber' : (l.color === 'purple' ? 'purple' : (l.color === 'sky' ? 'sky' : '')));
+            return `
+            <div style="padding:8px 0;border-bottom:1px solid rgba(51,65,85,0.6);">
+              <div class="alloc-row" style="border:none;padding:0;">
+                <div class="label">
+                  <span class="badge ${l.color}">${l.note || ''}</span>
+                  ${escapeHtml(l.label)}
+                </div>
+                <div class="amt">${money(l.amount)}</div>
+              </div>
+              <div class="progress-wrap">
+                <div class="progress-header"><span>${pct}% of check</span><span class="pct">${pct}%</span></div>
+                <div class="progress-bar"><div class="progress-fill ${fill}" style="width:${pct}%"></div></div>
+              </div>
+            </div>`;
+          }).join('')}
+          <div class="total-line">
+            <span>Total from this check</span>
+            <span>${money(totalAllocated)}</span>
+          </div>
+          ${!mathOk ? `<p class="tip warn" style="margin-top:8px;">Math check failed — please screenshot and report.</p>` : `<p style="font-size:0.75rem;color:var(--muted);margin-top:8px;">✓ Adds up to the paycheck exactly</p>`}
+        </div>
+        <div class="card">
+          <h2>What to do with this check</h2>
+          <ol style="padding-left:18px;font-size:0.9rem;color:var(--muted);line-height:1.6;">
+            ${alloc.map(l => `<li>Move <strong style="color:var(--text)">${money(l.amount)}</strong> → ${escapeHtml(l.label)}</li>`).join('')}
+          </ol>
+          ${cushionLine ? `
+            <p class="tip" style="margin-top:12px;">
+              After this transfer, ${escapeHtml(primary?.name || 'goal')} ~${money((primary?.current || 0) + cushionLine.amount)} of ${money(primary?.target || 0)}.
+              Update Goals (or Audit) after you move the money.
+            </p>
+          ` : ''}
+          ${state.phase === 'debt' ? `
+            <p class="tip" style="margin-top:12px;">After paying, update debt balances (or run a Weekly Audit).</p>
+          ` : ''}
+        </div>
+      `;
+
+      const resultEl = document.getElementById('plan-result');
+      resultEl.innerHTML = html;
+      resultEl.classList.remove('hidden');
+      resultEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function round2(n) {
+      return Math.round((Number(n) || 0) * 100) / 100;
+    }
+
+    // ========== WEEKLY AUDIT ==========
+    function prepareAuditForm() {
+      const dateInput = document.getElementById('audit-date');
+      if (dateInput && !dateInput.value) {
+        dateInput.value = new Date().toISOString().slice(0, 10);
+      }
+
+      const primary = state.goals.find(g => g.isPrimary) || state.goals[0];
+      let html = '';
+
+      html += `<div class="section-label">Cash Cushion / Goals</div>`;
+      if (primary) {
+        html += `
+          <label>${escapeHtml(primary.name)} — current balance ($)</label>
+          <input type="number" id="audit-cushion" inputmode="decimal" step="0.01" min="0" value="${primary.current || 0}" />
+        `;
+      } else {
+        html += `<p class="empty" style="padding:8px 0;">Add a primary goal first on the Goals tab.</p>`;
+      }
+
+      // Other goals
+      const otherGoals = (state.goals || []).filter(g => !g.isPrimary);
+      otherGoals.forEach(g => {
+        html += `
+          <label>${escapeHtml(g.name)} — current ($)</label>
+          <input type="number" class="audit-goal" data-id="${g.id}" inputmode="decimal" step="0.01" min="0" value="${g.current || 0}" />
+        `;
+      });
+
+      html += `<div class="section-label">Debt Balances</div>`;
+      if (!state.debts.length) {
+        html += `<p class="empty" style="padding:8px 0;">No debts added yet.</p>`;
+      } else {
+        state.debts.forEach(d => {
+          html += `
+            <label>${escapeHtml(d.name)} ${d.type === 'credit' ? '(CC)' : ''} — balance ($)</label>
+            <input type="number" class="audit-debt" data-id="${d.id}" inputmode="decimal" step="0.01" min="0" value="${d.balance || 0}" />
+          `;
+        });
+      }
+
+      // Variable bills (utilities etc.) — update this month's amount
+      const varBills = (state.bills || []).filter(b => b.variable);
+      if (varBills.length) {
+        html += `<div class="section-label">Variable Bills (this month’s amount)</div>`;
+        html += `<p style="font-size:0.75rem;color:var(--muted);margin-bottom:6px;">Gas, electric, water, etc. — update when the bill arrives.</p>`;
+        varBills.forEach(b => {
+          html += `
+            <label>${escapeHtml(b.name)} ($)</label>
+            <input type="number" class="audit-bill" data-id="${b.id}" inputmode="decimal" step="0.01" min="0" value="${b.amount || 0}" />
+          `;
+        });
+      }
+
+      // Bank accounts
+      if ((state.accounts || []).length) {
+        html += `<div class="section-label">Bank Account Balances</div>`;
+        state.accounts.forEach(a => {
+          html += `
+            <label>${escapeHtml(a.name)} ${a.isBillPay ? '(bill-pay)' : ''} ($)</label>
+            <input type="number" class="audit-account" data-id="${a.id}" inputmode="decimal" step="0.01" min="0" value="${a.balance || 0}" />
+          `;
+        });
+      }
+
+      document.getElementById('audit-form-fields').innerHTML = html;
+    }
+
+    function runAudit() {
+      const dateVal = document.getElementById('audit-date').value;
+      if (!dateVal) {
+        alert('Pick an audit date');
+        return;
+      }
+
+      const primary = state.goals.find(g => g.isPrimary) || state.goals[0];
+      const cushionInput = document.getElementById('audit-cushion');
+      const newCushion = cushionInput ? (Number(cushionInput.value) || 0) : (primary ? primary.current : 0);
+
+      // Collect debt balances
+      const debtSnap = [];
+      document.querySelectorAll('.audit-debt').forEach(inp => {
+        const id = inp.dataset.id;
+        const bal = Number(inp.value) || 0;
+        const d = state.debts.find(x => x.id === id);
+        if (d) {
+          debtSnap.push({ id, name: d.name, type: d.type, balance: bal, prevBalance: d.balance });
+        }
+      });
+
+      // Other goals
+      const goalSnap = [];
+      document.querySelectorAll('.audit-goal').forEach(inp => {
+        const id = inp.dataset.id;
+        const cur = Number(inp.value) || 0;
+        const g = state.goals.find(x => x.id === id);
+        if (g) goalSnap.push({ id, name: g.name, current: cur, prevCurrent: g.current, target: g.target });
+      });
+
+      // Variable bills
+      const billSnap = [];
+      document.querySelectorAll('.audit-bill').forEach(inp => {
+        const id = inp.dataset.id;
+        const amt = Number(inp.value) || 0;
+        const b = state.bills.find(x => x.id === id);
+        if (b) billSnap.push({ id, name: b.name, amount: amt, prevAmount: b.amount });
+      });
+
+      // Accounts
+      const acctSnap = [];
+      document.querySelectorAll('.audit-account').forEach(inp => {
+        const id = inp.dataset.id;
+        const bal = Number(inp.value) || 0;
+        const a = (state.accounts || []).find(x => x.id === id);
+        if (a) acctSnap.push({ id, name: a.name, balance: bal, prevBalance: a.balance });
+      });
+
+      const notes = (document.getElementById('audit-notes').value || '').trim();
+
+      // Previous audit for comparison
+      const prev = (state.audits || []).length ? state.audits[state.audits.length - 1] : null;
+
+      // Build snapshot
+      const snapshot = {
+        id: uid(),
+        date: dateVal,
+        notes,
+        cushion: newCushion,
+        cushionPrev: primary ? primary.current : 0,
+        cushionTarget: primary ? primary.target : 0,
+        debts: debtSnap.map(d => ({ id: d.id, name: d.name, type: d.type, balance: d.balance })),
+        goals: goalSnap,
+        bills: billSnap.map(b => ({ id: b.id, name: b.name, amount: b.amount })),
+        accounts: acctSnap.map(a => ({ id: a.id, name: a.name, balance: a.balance })),
+        phase: state.phase,
+        totalDebt: debtSnap.reduce((s, d) => s + d.balance, 0),
+        totalDebtPrev: debtSnap.reduce((s, d) => s + (d.prevBalance || 0), 0)
+      };
+
+      // Update live state balances
+      if (primary) {
+        primary.current = newCushion;
+      }
+      debtSnap.forEach(d => {
+        const live = state.debts.find(x => x.id === d.id);
+        if (live) live.balance = d.balance;
+      });
+      goalSnap.forEach(g => {
+        const live = state.goals.find(x => x.id === g.id);
+        if (live) live.current = g.current;
+      });
+      billSnap.forEach(b => {
+        const live = state.bills.find(x => x.id === b.id);
+        if (live) live.amount = b.amount;
+      });
+      acctSnap.forEach(a => {
+        const live = (state.accounts || []).find(x => x.id === a.id);
+        if (live) live.balance = a.balance;
+      });
+
+      if (!state.audits) state.audits = [];
+      state.audits.push(snapshot);
+      // keep last 52 weeks max
+      if (state.audits.length > 52) state.audits = state.audits.slice(-52);
+
+      save();
+      document.getElementById('audit-notes').value = '';
+      showAuditReport(snapshot, prev);
+    }
+
+    function showAuditReport(snap, prev) {
+      const cushionDelta = snap.cushion - (prev ? prev.cushion : snap.cushionPrev);
+      const debtDelta = snap.totalDebt - (prev ? prev.totalDebt : snap.totalDebtPrev);
+      const cushionPct = snap.cushionTarget > 0 ? Math.min(100, (snap.cushion / snap.cushionTarget) * 100) : 0;
+      const cushionLeft = Math.max(0, snap.cushionTarget - snap.cushion);
+
+      // Verdict
+      let verdict = 'On track';
+      let boxClass = 'good';
+      const recs = [];
+
+      if (state.phase === 'cushion') {
+        if (cushionDelta > 0) {
+          recs.push(`Cushion grew by ${money(cushionDelta)} — keep prioritizing the house & baby buffer.`);
+        } else if (cushionDelta < -1) {
+          verdict = 'Needs attention';
+          boxClass = 'warn';
+          recs.push(`Cushion dropped by ${money(Math.abs(cushionDelta))}. Check everyday spending or unexpected costs.`);
+        } else {
+          recs.push('Cushion was flat this period. Try to push at least a small amount into it on the next paycheck.');
+        }
+        if (cushionLeft > 0) {
+          recs.push(`Still need ${money(cushionLeft)} to finish the primary cushion. Stay in Build Cushion mode.`);
+        } else {
+          recs.push('Primary cushion target is met (or exceeded)! You can flip to Attack Debt mode when ready.');
+          if (boxClass === 'good') verdict = 'Cushion complete';
+        }
+      } else {
+        // debt phase
+        if (debtDelta < -1) {
+          recs.push(`Total debt down ${money(Math.abs(debtDelta))} — strong progress.`);
+        } else if (debtDelta > 1) {
+          verdict = 'Needs attention';
+          boxClass = 'bad';
+          recs.push(`Total debt rose by ${money(debtDelta)}. Avoid new charges and cover all minimums.`);
+        } else {
+          recs.push('Debt balances were roughly flat. Put extra toward credit cards on the next check.');
+        }
+      }
+
+      // Per-debt highlights
+      const debtChanges = [];
+      (snap.debts || []).forEach(d => {
+        const prevBal = prev
+          ? (prev.debts.find(x => x.id === d.id)?.balance)
+          : (state.debts.find(x => x.id === d.id) ? null : null);
+        // We stored prev in the run from live state; reconstruct from prev audit if available
+        let pBal = null;
+        if (prev) {
+          const pd = prev.debts.find(x => x.id === d.id);
+          if (pd) pBal = pd.balance;
+        }
+        if (pBal != null) {
+          const ch = d.balance - pBal;
+          if (Math.abs(ch) > 0.5) {
+            debtChanges.push({ name: d.name, type: d.type, change: ch, balance: d.balance });
+          }
+        }
+      });
+
+      // Sort biggest reductions first
+      debtChanges.sort((a, b) => a.change - b.change);
+
+      if (debtChanges.length) {
+        debtChanges.slice(0, 4).forEach(dc => {
+          if (dc.change < 0) {
+            recs.push(`${dc.name}: paid down ${money(Math.abs(dc.change))} (now ${money(dc.balance)}).`);
+          } else {
+            recs.push(`${dc.name}: balance up ${money(dc.change)} — review charges.`);
+          }
+        });
+      }
+
+      // Mode reminder
+      if (state.phase === 'cushion' && cushionLeft <= 0) {
+        recs.push('Consider switching to Attack Debt so extras hit credit cards first.');
+      }
+      if (state.phase === 'debt' && cushionLeft > snap.cushionTarget * 0.2 && snap.cushionTarget > 0) {
+        recs.push('Cushion has room to rebuild if you want a larger buffer before aggressive payoff.');
+      }
+
+      if (!recs.length) {
+        recs.push('Keep logging weekly so trends become clear.');
+      }
+
+      let debtRows = '';
+      (snap.debts || []).forEach(d => {
+        let changeHtml = '';
+        if (prev) {
+          const pd = prev.debts.find(x => x.id === d.id);
+          if (pd) changeHtml = ` <span style="font-size:0.8rem;">(${deltaStr(d.balance - pd.balance)})</span>`;
+        }
+        debtRows += `
+          <div class="alloc-row">
+            <div class="label">${escapeHtml(d.name)} ${d.type === 'credit' ? '<span class="badge rose">CC</span>' : ''}</div>
+            <div class="amt">${money(d.balance)}${changeHtml}</div>
+          </div>
+        `;
+      });
+
+      const html = `
+        <div class="result-box ${boxClass}">
+          <h3>Audit ${snap.date} — ${verdict}</h3>
+          <div class="alloc-row">
+            <div class="label">Cushion balance</div>
+            <div class="amt">${money(snap.cushion)} ${prev ? deltaStr(cushionDelta) : ''}</div>
+          </div>
+          <div class="progress-wrap" style="margin:8px 0 12px;">
+            <div class="progress-header"><span>Cushion progress</span><span class="pct">${Math.round(cushionPct)}%</span></div>
+            <div class="progress-bar"><div class="progress-fill ${cushionPct >= 100 ? '' : (cushionPct >= 50 ? 'sky' : 'amber')}" style="width:${Math.min(100, cushionPct)}%"></div></div>
+          </div>
+          <div class="alloc-row">
+            <div class="label">Cushion progress</div>
+            <div class="amt">${cushionPct.toFixed(0)}% · ${money(cushionLeft)} left</div>
+          </div>
+          <div class="alloc-row">
+            <div class="label">Total debt</div>
+            <div class="amt">${money(snap.totalDebt)} ${prev ? deltaStr(debtDelta) : ''}</div>
+          </div>
+          ${snap.notes ? `<p class="tip" style="margin-top:10px;">Note: ${escapeHtml(snap.notes)}</p>` : ''}
+        </div>
+
+        ${debtRows ? `
+        <div class="card">
+          <h2>Debt detail</h2>
+          ${debtRows}
+        </div>
+        ` : ''}
+
+        <div class="card">
+          <h2>What to change / keep doing</h2>
+          <ul class="rec-list">
+            ${recs.map(r => `<li>${escapeHtml(r)}</li>`).join('')}
+          </ul>
+          <p class="tip" style="margin-top:12px;">
+            Next step: on your next paycheck, open Allocate and generate a new split. Balances are already updated from this audit.
+          </p>
+        </div>
+      `;
+
+      const el = document.getElementById('audit-result');
+      el.innerHTML = html;
+      el.classList.remove('hidden');
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      renderAuditHistory();
+    }
+
+    function renderAuditHistory() {
+      const el = document.getElementById('audit-history');
+      if (!el) return;
+      const audits = state.audits || [];
+      if (!audits.length) {
+        el.innerHTML = '<p class="empty">No audits yet. Run your first check-in above.</p>';
+        return;
+      }
+      // newest first
+      const sorted = [...audits].reverse();
+      el.innerHTML = sorted.map((a, idx) => {
+        const prev = sorted[idx + 1];
+        const cDelta = prev ? a.cushion - prev.cushion : 0;
+        const dDelta = prev ? a.totalDebt - prev.totalDebt : 0;
+        return `
+          <div class="audit-history-item" onclick="viewPastAudit('${a.id}')">
+            <div class="date">${a.date} ${a.phase === 'debt' ? '<span class="badge amber">Debt mode</span>' : '<span class="badge green">Cushion mode</span>'}</div>
+            <div class="summary">
+              Cushion ${money(a.cushion)}${prev ? ' (' + (cDelta >= 0 ? '+' : '') + money(cDelta) + ')' : ''}
+              · Debt ${money(a.totalDebt)}${prev ? ' (' + (dDelta >= 0 ? '+' : '') + money(dDelta) + ')' : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function viewPastAudit(id) {
+      const snap = (state.audits || []).find(a => a.id === id);
+      if (!snap) return;
+      const idx = state.audits.findIndex(a => a.id === id);
+      const prev = idx > 0 ? state.audits[idx - 1] : null;
+      showAuditReport(snap, prev);
+    }
+
+    // ========== SHAREABLE WEEKLY REPORT ==========
+    let lastShareText = '';
+
+    function generateShareReport() {
+      const primary = state.goals.find(g => g.isPrimary) || state.goals[0];
+      const audits = state.audits || [];
+      const latest = audits.length ? audits[audits.length - 1] : null;
+      const prev = audits.length > 1 ? audits[audits.length - 2] : null;
+
+      const today = new Date().toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+      const reportDate = latest ? latest.date : today;
+
+      const cushion = primary ? primary.current : 0;
+      const cushionTarget = primary ? primary.target : 0;
+      const cushionLeft = Math.max(0, cushionTarget - cushion);
+      const cushionPct = cushionTarget > 0 ? Math.round((cushion / cushionTarget) * 100) : 0;
+
+      let cushionDelta = null;
+      let debtDelta = null;
+      if (latest && prev) {
+        cushionDelta = latest.cushion - prev.cushion;
+        debtDelta = latest.totalDebt - prev.totalDebt;
+      } else if (latest) {
+        cushionDelta = latest.cushion - (latest.cushionPrev || latest.cushion);
+        debtDelta = latest.totalDebt - (latest.totalDebtPrev || latest.totalDebt);
+      }
+
+      const totalDebt = sum(state.debts, 'balance');
+      const totalMin = sum(state.debts, 'minPayment');
+      const monthlyHousing = sum(state.housing, 'amount');
+      const monthlyBills = sum(state.bills, 'amount');
+      const monthlyFixed = monthlyHousing + monthlyBills + totalMin;
+
+      // Build plain-text report (easy to paste into Messages / email)
+      let lines = [];
+      lines.push('📊 WEEKLY MONEY REPORT');
+      lines.push('Date: ' + reportDate);
+      lines.push('Mode: ' + (state.phase === 'cushion' ? 'Building House + Baby Cushion' : 'Attacking Debt (CCs first)'));
+      lines.push('');
+      lines.push('—— HOW WE’RE DOING ——');
+
+      // Status sentence
+      if (state.phase === 'cushion') {
+        if (cushionLeft <= 0) {
+          lines.push('✅ Cushion goal is met! Ready to switch to debt payoff when we want.');
+        } else if (cushionDelta != null && cushionDelta > 0) {
+          lines.push('✅ Cushion is growing — up ' + money(cushionDelta) + ' since last check-in.');
+        } else if (cushionDelta != null && cushionDelta < -1) {
+          lines.push('⚠️ Cushion dropped ' + money(Math.abs(cushionDelta)) + ' since last check-in. Worth a look.');
+        } else {
+          lines.push('➡️ Still building the cushion. ' + money(cushionLeft) + ' to go.');
+        }
+      } else {
+        if (debtDelta != null && debtDelta < -1) {
+          lines.push('✅ Total debt down ' + money(Math.abs(debtDelta)) + ' since last check-in. Great progress!');
+        } else if (debtDelta != null && debtDelta > 1) {
+          lines.push('⚠️ Total debt up ' + money(debtDelta) + ' since last check-in.');
+        } else {
+          lines.push('➡️ In debt-payoff mode. Focus extras on credit cards first.');
+        }
+      }
+
+      lines.push('');
+      lines.push('—— CASH CUSHION (House + Baby) ——');
+      lines.push('Saved:     ' + money(cushion));
+      lines.push('Target:    ' + money(cushionTarget));
+      lines.push('Left:      ' + money(cushionLeft));
+      lines.push('Progress:  ' + cushionPct + '%');
+      if (cushionDelta != null) {
+        lines.push('Change:    ' + (cushionDelta >= 0 ? '+' : '') + money(cushionDelta));
+      }
+
+      // Other goals
+      const otherGoals = (state.goals || []).filter(g => !g.isPrimary && g.target > 0);
+      if (otherGoals.length) {
+        lines.push('');
+        lines.push('—— OTHER GOALS ——');
+        otherGoals.forEach(g => {
+          const pct = g.target > 0 ? Math.round((g.current / g.target) * 100) : 0;
+          lines.push(g.name + ': ' + money(g.current) + ' / ' + money(g.target) + ' (' + pct + '%)');
+        });
+      }
+
+      lines.push('');
+      lines.push('—— DEBTS ——');
+      if (!state.debts.length) {
+        lines.push('None listed.');
+      } else {
+        // Sort: credit cards first
+        const sortedDebts = [...state.debts].sort((a, b) => {
+          if (a.type === 'credit' && b.type !== 'credit') return -1;
+          if (b.type === 'credit' && a.type !== 'credit') return 1;
+          return (b.balance || 0) - (a.balance || 0);
+        });
+        sortedDebts.forEach(d => {
+          const tag = d.type === 'credit' ? ' [CC]' : '';
+          let change = '';
+          if (latest && prev) {
+            const pd = prev.debts.find(x => x.id === d.id);
+            if (pd) {
+              const ch = d.balance - pd.balance;
+              if (Math.abs(ch) > 0.5) change = '  (' + (ch >= 0 ? '+' : '') + money(ch) + ')';
+            }
+          }
+          lines.push(d.name + tag + ': ' + money(d.balance) + change);
+          lines.push('   Min payment: ' + money(d.minPayment) + (d.rate ? '  ·  ' + d.rate + '%' : ''));
+        });
+        lines.push('');
+        lines.push('Total debt:     ' + money(totalDebt));
+        if (debtDelta != null) {
+          lines.push('Change:         ' + (debtDelta >= 0 ? '+' : '') + money(debtDelta));
+        }
+        lines.push('Monthly mins:   ' + money(totalMin));
+      }
+
+      if ((state.accounts || []).length) {
+        lines.push('');
+        lines.push('—— BANK ACCOUNTS ——');
+        state.accounts.forEach(a => {
+          lines.push(a.name + (a.isBillPay ? ' [bill-pay]' : '') + ': ' + money(a.balance || 0));
+        });
+        lines.push('Bill-pay available: ' + money(billPayBalance()));
+      }
+
+      lines.push('');
+      lines.push('—— MONTHLY COSTS ——');
+      lines.push('Housing:     ' + money(monthlyHousing));
+      const fixedBills = (state.bills || []).filter(b => !b.variable);
+      const varBillsList = (state.bills || []).filter(b => b.variable);
+      if (fixedBills.length) {
+        lines.push('Fixed bills:');
+        fixedBills.forEach(b => lines.push('  ' + b.name + ': ' + money(b.amount)));
+      }
+      if (varBillsList.length) {
+        lines.push('Variable bills (this month):');
+        varBillsList.forEach(b => lines.push('  ' + b.name + ': ' + money(b.amount)));
+      }
+      if (!fixedBills.length && !varBillsList.length) {
+        lines.push('Bills:       ' + money(monthlyBills));
+      }
+      lines.push('Debt mins:   ' + money(totalMin));
+      lines.push('Total:       ' + money(monthlyFixed));
+
+      if (state.everyday && state.everyday.length) {
+        lines.push('');
+        lines.push('—— EVERYDAY BUDGET (monthly targets) ——');
+        state.everyday.forEach(e => {
+          lines.push(e.name + ': ' + money(e.amount));
+        });
+        lines.push('Total everyday: ' + money(sum(state.everyday, 'amount')));
+      }
+
+      if (latest && latest.notes) {
+        lines.push('');
+        lines.push('—— NOTES ——');
+        lines.push(latest.notes);
+      }
+
+      lines.push('');
+      lines.push('—— NEXT STEPS ——');
+      if (state.phase === 'cushion' && cushionLeft > 0) {
+        lines.push('• Keep funding the cushion on every paycheck');
+        lines.push('• Always pay debt minimums first');
+        lines.push('• ' + money(cushionLeft) + ' left until cushion goal');
+      } else if (state.phase === 'cushion' && cushionLeft <= 0) {
+        lines.push('• Cushion goal reached — we can switch to Attack Debt mode');
+        lines.push('• Extra money can then go to credit cards first');
+      } else {
+        lines.push('• Pay all minimums, then extra to credit cards first');
+        lines.push('• Update balances on the next weekly audit');
+      }
+      lines.push('');
+      lines.push('Generated by Paycheck Planner · ' + today);
+
+      lastShareText = lines.join('\n');
+
+      const preview = document.getElementById('share-report-preview');
+      preview.textContent = lastShareText;
+      preview.classList.remove('hidden');
+
+      document.getElementById('btn-copy-report').style.display = 'block';
+      const shareBtn = document.getElementById('btn-share-report');
+      if (navigator.share) {
+        shareBtn.style.display = 'block';
+      } else {
+        shareBtn.style.display = 'none';
+      }
+
+      preview.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    async function copyShareReport() {
+      if (!lastShareText) {
+        generateShareReport();
+      }
+      try {
+        await navigator.clipboard.writeText(lastShareText);
+        const btn = document.getElementById('btn-copy-report');
+        const orig = btn.textContent;
+        btn.textContent = 'Copied! ✓';
+        setTimeout(() => { btn.textContent = orig; }, 2000);
+      } catch {
+        // Fallback: select the pre text
+        const pre = document.getElementById('share-report-preview');
+        const range = document.createRange();
+        range.selectNodeContents(pre);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+        alert('Report selected — long-press and Copy, or use the Share button.');
+      }
+    }
+
+    async function nativeShareReport() {
+      if (!lastShareText) generateShareReport();
+      if (navigator.share) {
+        try {
+          await navigator.share({
+            title: 'Weekly Money Report',
+            text: lastShareText
+          });
+        } catch (e) {
+          // user cancelled or failed — ignore
+        }
+      } else {
+        copyShareReport();
+      }
+    }
+
+    // ========== AUDIT DAY + CALENDAR ==========
+    function setAuditDay(val) {
+      state.auditDay = Number(val);
+      save();
+    }
+
+    function setAdvanceAmount(val) {
+      if (!state.paySchedule) state.paySchedule = structuredClone(DEFAULT.paySchedule);
+      state.paySchedule.advanceAmount = Number(val) || 3000;
+      save();
+      onPaycheckTypeChange();
+    }
+
+    function icsDate(d) {
+      // floating local date YYYYMMDD
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return y + m + day;
+    }
+
+    function icsEscape(s) {
+      return String(s).replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n');
+    }
+
+    function exportCalendar() {
+      const events = [];
+      const now = new Date();
+      const end = new Date(now.getFullYear(), now.getMonth() + 3, now.getDate());
+
+      // Bills, housing, debt mins due dates for next ~3 months
+      const sources = [
+        ...(state.housing || []).map(h => ({ ...h, kind: 'Housing', _amt: h.amount })),
+        ...(state.bills || []).map(b => ({ ...b, kind: 'Bill', _amt: b.amount })),
+        ...(state.debts || []).map(d => ({ ...d, kind: 'Debt min', name: d.name + ' min', _amt: d.minPayment }))
+      ];
+
+      sources.forEach(item => {
+        if (!item.dueDay) return;
+        let cursor = new Date(now.getFullYear(), now.getMonth(), 1);
+        for (let i = 0; i < 4; i++) {
+          const y = cursor.getFullYear();
+          const m = cursor.getMonth();
+          const dim = new Date(y, m + 1, 0).getDate();
+          const day = Math.min(item.dueDay, dim);
+          const due = new Date(y, m, day);
+          if (due >= new Date(now.getFullYear(), now.getMonth(), now.getDate()) && due <= end) {
+            const amt = item._amt != null ? item._amt : item.amount;
+            const title = item.kind + ': ' + item.name + (amt ? ' — ' + money(amt) : '');
+            events.push({
+              uid: (item.id || item.name) + '-' + icsDate(due) + '@paycheckplanner',
+              title,
+              date: due,
+              desc: (item.variable ? 'Variable bill — confirm amount before paying.' : 'Fixed amount.') + ' Mark paid in Paycheck Planner when done.'
+            });
+          }
+          cursor = new Date(y, m + 1, 1);
+        }
+      });
+
+      // Pay days (10th main, 25th advance)
+      const sched = state.paySchedule || DEFAULT.paySchedule;
+      if (sched && sched.enabled !== false) {
+        [
+          { day: sched.advanceDay || 25, title: (sched.advanceLabel || 'Advance') + ' — ' + money(sched.advanceAmount || 3000), desc: 'Flat rate advance. Open Paycheck Planner → Allocate → Advance.' },
+          { day: sched.mainDay || 10, title: sched.mainLabel || 'Main paycheck (10th)', desc: 'Main monthly pay. Open Paycheck Planner → Allocate → Main paycheck.' }
+        ].forEach(p => {
+          let cursor = new Date(now.getFullYear(), now.getMonth(), 1);
+          for (let i = 0; i < 4; i++) {
+            const y = cursor.getFullYear();
+            const m = cursor.getMonth();
+            const dim = new Date(y, m + 1, 0).getDate();
+            const day = Math.min(p.day, dim);
+            const due = new Date(y, m, day);
+            if (due >= new Date(now.getFullYear(), now.getMonth(), now.getDate()) && due <= end) {
+              events.push({
+                uid: 'pay-' + p.day + '-' + icsDate(due) + '@paycheckplanner',
+                title: p.title,
+                date: due,
+                desc: p.desc
+              });
+            }
+            cursor = new Date(y, m + 1, 1);
+          }
+        });
+      }
+
+      // Weekly audits for next 3 months
+      const auditDay = state.auditDay != null ? state.auditDay : 5;
+      let d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      // move to next audit day (including today)
+      const add = (auditDay - d.getDay() + 7) % 7;
+      d.setDate(d.getDate() + add);
+      while (d <= end) {
+        events.push({
+          uid: 'audit-' + icsDate(d) + '@paycheckplanner',
+          title: 'Weekly money audit (Paycheck Planner)',
+          date: d,
+          desc: 'Log balances, mark bills paid, generate report for your wife.'
+        });
+        d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 7);
+      }
+
+      if (!events.length) {
+        alert('Add due days on bills/housing or set an audit day first.');
+        return;
+      }
+
+      let ics = [
+        'BEGIN:VCALENDAR',
+        'VERSION:2.0',
+        'PRODID:-//Paycheck Planner//EN',
+        'CALSCALE:GREGORIAN',
+        'METHOD:PUBLISH'
+      ];
+
+      events.forEach(ev => {
+        const stamp = icsDate(new Date()) + 'T120000';
+        ics.push('BEGIN:VEVENT');
+        ics.push('UID:' + ev.uid);
+        ics.push('DTSTAMP:' + stamp);
+        ics.push('DTSTART;VALUE=DATE:' + icsDate(ev.date));
+        ics.push('SUMMARY:' + icsEscape(ev.title));
+        ics.push('DESCRIPTION:' + icsEscape(ev.desc));
+        // Default alarm: 1 day before at 9am-ish (relative)
+        ics.push('BEGIN:VALARM');
+        ics.push('TRIGGER:-P1D');
+        ics.push('ACTION:DISPLAY');
+        ics.push('DESCRIPTION:Reminder');
+        ics.push('END:VALARM');
+        ics.push('END:VEVENT');
+      });
+
+      ics.push('END:VCALENDAR');
+      const blob = new Blob([ics.join('\r\n')], { type: 'text/calendar;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'paycheck-planner-reminders.ics';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    // ========== IMPORT / EXPORT ==========
+    function exportData() {
+      const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'paycheck-planner-backup.json';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function importData(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const data = JSON.parse(reader.result);
+          if (!data || typeof data !== 'object') throw new Error('Invalid');
+          state = { ...structuredClone(DEFAULT), ...data };
+          if (!state.audits) state.audits = [];
+          save();
+          alert('Import successful');
+        } catch {
+          alert('Could not import that file');
+        }
+      };
+      reader.readAsText(file);
+      e.target.value = '';
+    }
+
+    function clearAll() {
+      state = structuredClone(DEFAULT);
+      save();
+      document.getElementById('plan-result')?.classList.add('hidden');
+      document.getElementById('audit-result')?.classList.add('hidden');
+    }
+
+    // ========== INIT ==========
+    renderAll();
+  </script>
+</body>
+</html>
