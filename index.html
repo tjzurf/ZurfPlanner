@@ -579,7 +579,8 @@
         <h2>Money routing</h2>
         <p style="font-size:0.8rem;color:var(--muted);margin-bottom:10px;">
           <strong>Deposit to</strong> = where the paycheck lands, then slices move.<br>
-          <strong>Pay from</strong> = account drained when you tap ✅ Paid.
+          <strong>Pay from</strong> = account drained when you tap ✅ Paid.<br>
+          <strong>Allowance</strong> = each between-check category (groceries, Bri, Trent, etc.).
         </p>
         <div id="routing-fields"></div>
         <button class="btn secondary" style="margin-top:12px" onclick="saveRoutingFromForm()">Save routing</button>
@@ -2961,11 +2962,10 @@
         { key: 'housing', label: 'Housing / mortgage' },
         { key: 'bills', label: 'Recurring bills' },
         { key: 'debt', label: 'Debt payments' },
-        { key: 'everyday', label: 'Everyday spending' },
         { key: 'leftover', label: 'Leftover / flex' },
         { key: 'goals', label: 'Goals (cushion, etc.)' }
       ];
-      el.innerHTML = rows.map(row => {
+      let html = rows.map(row => {
         if (row.single) {
           return `<label>${row.label}</label>
             <select id="route-deposit">${accountOptionsHtml(r.deposit || 'acct-bills')}</select>`;
@@ -2977,21 +2977,54 @@
           <label>Pull from when marked Paid</label>
           <select id="route-${row.key}-from">${accountOptionsHtml(cur.payFrom || cur.to || 'acct-bills')}</select>`;
       }).join('');
+
+      // Per-category allowance routing
+      const allowance = state.everyday || [];
+      html += `<div class="section-label">Between-check allowance</div>
+        <p style="font-size:0.75rem;color:var(--muted);margin-bottom:8px;">Where each allowance category goes when you Apply a paycheck.</p>`;
+      if (!allowance.length) {
+        html += `<p class="empty">No allowance categories yet. Add them on the Budget tab.</p>`;
+      } else {
+        allowance.forEach(item => {
+          html += `
+            <label>${escapeHtml(item.name)} (${money(item.amount)}/check)</label>
+            <select id="route-allow-${item.id}" data-everyday-id="${item.id}">
+              ${accountOptionsHtml(item.accountTo || 'acct-bills')}
+            </select>
+          `;
+        });
+      }
+
+      el.innerHTML = html;
     }
 
     function saveRoutingFromForm() {
       if (!state.routing) state.routing = structuredClone(DEFAULT.routing);
       const dep = document.getElementById('route-deposit');
       if (dep) state.routing.deposit = dep.value;
-      ['housing', 'bills', 'debt', 'everyday', 'leftover', 'goals'].forEach(key => {
+      ['housing', 'bills', 'debt', 'leftover', 'goals'].forEach(key => {
         const toEl = document.getElementById('route-' + key + '-to');
         const fromEl = document.getElementById('route-' + key + '-from');
         if (!state.routing[key]) state.routing[key] = {};
         if (toEl) state.routing[key].to = toEl.value;
         if (fromEl) state.routing[key].payFrom = fromEl.value;
       });
+      // Save each allowance category destination
+      document.querySelectorAll('[data-everyday-id]').forEach(sel => {
+        const id = sel.getAttribute('data-everyday-id');
+        const item = (state.everyday || []).find(e => e.id === id);
+        if (item) item.accountTo = sel.value;
+      });
+      // Keep generic everyday route aligned with first Trent-like default for fallbacks
+      if (!state.routing.everyday) state.routing.everyday = {};
+      const trent = (state.everyday || []).find(e => (e.accountTo || '').includes('trent'));
+      if (trent) {
+        state.routing.everyday.to = trent.accountTo;
+        state.routing.everyday.payFrom = trent.accountTo;
+      }
       save();
-      alert('Routing saved');
+      renderEverydayList();
+      alert('Routing saved — including allowance categories');
     }
 
     function icsDate(d) {
