@@ -510,10 +510,9 @@
       <div class="card">
         <h2><span class="dot" style="background:var(--accent)"></span> Bank Accounts</h2>
         <p style="font-size:0.8rem;color:var(--muted);margin-bottom:10px;">
-          Mark one as <strong>Bill-pay</strong> (usually checking). Allocation uses that balance so the 10th check covers mortgage if you don’t already have enough set aside.
+          Permanent accounts match your bank: Bills, Mortgage, Trent’s Pocket, Bri’s Pocket, Savings, Emergency Fund. Tap 💵 to set current balances. Routing (where deposits go / Paid pulls from) is under <strong>More</strong>.
         </p>
         <ul class="item-list" id="list-accounts"></ul>
-        <button class="btn secondary small" onclick="openModal('accounts')">+ Add Account</button>
       </div>
       <div class="card">
         <h2><span class="dot" style="background:var(--amber)"></span> Income Sources</h2>
@@ -532,6 +531,15 @@
         <label>Advance amount on the 25th ($)</label>
         <input type="number" id="setting-advance-amount" inputmode="decimal" step="0.01" min="0" onchange="setAdvanceAmount(this.value)" />
         <p class="tip" style="margin-top:10px;">Pre-fills when you select “Advance” on the Allocate tab.</p>
+      </div>
+      <div class="card">
+        <h2>Money routing</h2>
+        <p style="font-size:0.8rem;color:var(--muted);margin-bottom:10px;">
+          <strong>Deposit to</strong> = where the paycheck lands, then slices move.<br>
+          <strong>Pay from</strong> = account drained when you tap ✅ Paid.
+        </p>
+        <div id="routing-fields"></div>
+        <button class="btn secondary" style="margin-top:12px" onclick="saveRoutingFromForm()">Save routing</button>
       </div>
       <div class="card">
         <h2>Reminders & Calendar</h2>
@@ -602,9 +610,46 @@
       ],
       everyday: [],
       income: [],
-      accounts: [], // { id, name, type: checking|savings|other, balance, isBillPay }
+      accounts: [
+        { id: 'acct-bills', name: 'Bills', type: 'checking', balance: 0, isBillPay: true, permanent: true },
+        { id: 'acct-mortgage', name: 'Mortgage Account', type: 'checking', balance: 0, isBillPay: false, permanent: true },
+        { id: 'acct-trent', name: "Trent's Pocket", type: 'checking', balance: 0, isBillPay: false, permanent: true },
+        { id: 'acct-bri', name: "Bri's Pocket", type: 'checking', balance: 0, isBillPay: false, permanent: true },
+        { id: 'acct-savings', name: 'Savings', type: 'savings', balance: 0, isBillPay: false, permanent: true },
+        { id: 'acct-emergency', name: 'Emergency Fund', type: 'savings', balance: 0, isBillPay: false, permanent: true }
+      ],
+      routing: {
+        deposit: 'acct-bills',
+        housing: { to: 'acct-mortgage', payFrom: 'acct-mortgage' },
+        bills: { to: 'acct-bills', payFrom: 'acct-bills' },
+        debt: { to: 'acct-bills', payFrom: 'acct-bills' },
+        everyday: { to: 'acct-trent', payFrom: 'acct-trent' },
+        leftover: { to: 'acct-bills', payFrom: 'acct-bills' },
+        goals: { to: 'acct-emergency', payFrom: 'acct-emergency' }
+      },
       audits: []
     };
+
+    const PERMANENT_ACCOUNT_IDS = ['acct-bills', 'acct-mortgage', 'acct-trent', 'acct-bri', 'acct-savings', 'acct-emergency'];
+
+    function ensurePermanentAccounts(merged) {
+      const defaults = structuredClone(DEFAULT.accounts);
+      if (!merged.accounts) merged.accounts = [];
+      defaults.forEach(def => {
+        const existing = merged.accounts.find(a => a.id === def.id || a.name === def.name);
+        if (!existing) {
+          merged.accounts.push({ ...def });
+        } else {
+          existing.id = def.id;
+          existing.name = def.name;
+          existing.permanent = true;
+          if (def.isBillPay) existing.isBillPay = true;
+        }
+      });
+      if (!merged.routing) merged.routing = structuredClone(DEFAULT.routing);
+      else merged.routing = { ...structuredClone(DEFAULT.routing), ...merged.routing };
+      return merged;
+    }
 
     let state = load();
 
@@ -613,10 +658,10 @@
         const raw = localStorage.getItem('paycheckPlanner');
         if (!raw) return structuredClone(DEFAULT);
         const parsed = JSON.parse(raw);
-        const merged = { ...structuredClone(DEFAULT), ...parsed };
+        let merged = { ...structuredClone(DEFAULT), ...parsed };
         if (!merged.paySchedule) merged.paySchedule = structuredClone(DEFAULT.paySchedule);
         else merged.paySchedule = { ...structuredClone(DEFAULT.paySchedule), ...merged.paySchedule };
-        if (!merged.accounts) merged.accounts = [];
+        merged = ensurePermanentAccounts(merged);
         if (merged.goals && Array.isArray(merged.goals)) {
           merged.goals.forEach(g => {
             if (g.monthlyContribute == null) g.monthlyContribute = g.isPrimary ? 200 : 0;
@@ -785,12 +830,57 @@
       }).join('');
     }
 
+    function getAccountById(id) {
+      return (state.accounts || []).find(a => a.id === id) || null;
+    }
+
+    function routeForCategory(cat) {
+      const r = state.routing || DEFAULT.routing;
+      return r[cat] || { to: r.deposit || 'acct-bills', payFrom: r.deposit || 'acct-bills' };
+    }
+
+    function categoryForPaidItem(key, item) {
+      if (key === 'housing') return 'housing';
+      if (key === 'bills') return 'bills';
+      if (key === 'debts') return 'debt';
+      return 'bills';
+    }
+
     function togglePaid(key, id) {
       const item = state[key].find(x => x.id === id);
       if (!item) return;
       if (isPaidThisPeriod(item)) {
+        // Undo paid: put money back into payFrom account
+        const cat = categoryForPaidItem(key, item);
+        const route = routeForCategory(cat);
+        const acct = getAccountById(route.payFrom);
+        const amt = Number(item.amount != null ? item.amount : item.minPayment) || 0;
+        if (acct && amt > 0) {
+          acct.balance = round2((Number(acct.balance) || 0) + amt);
+        }
+        if (key === 'debts' && amt > 0) {
+          item.balance = round2((Number(item.balance) || 0) + amt);
+        }
         item.paidPeriod = null;
       } else {
+        // Mark paid: pull from the right account
+        const cat = categoryForPaidItem(key, item);
+        const route = routeForCategory(cat);
+        const acct = getAccountById(route.payFrom);
+        const amt = Number(item.amount != null ? item.amount : item.minPayment) || 0;
+        if (!acct) {
+          alert('No account set for paying this. Set routing in More → Money routing.');
+          return;
+        }
+        if ((Number(acct.balance) || 0) + 0.001 < amt) {
+          if (!confirm(acct.name + ' only has ' + money(acct.balance) + ' but this is ' + money(amt) + '. Pay anyway (balance may go negative in the app)?')) {
+            return;
+          }
+        }
+        acct.balance = round2((Number(acct.balance) || 0) - amt);
+        if (key === 'debts' && amt > 0) {
+          item.balance = round2(Math.max(0, (Number(item.balance) || 0) - amt));
+        }
         item.paidPeriod = periodKey();
       }
       save();
@@ -845,25 +935,21 @@
     function renderAccountsList() {
       const el = document.getElementById('list-accounts');
       if (!el) return;
+      ensurePermanentAccounts(state);
       const items = state.accounts || [];
-      if (!items.length) {
-        el.innerHTML = '<li class="empty">Add checking/savings so allocation knows what you already have</li>';
-        return;
-      }
       el.innerHTML = items.map(a => `
         <li class="item">
           <div class="item-info">
             <div class="item-name">${escapeHtml(a.name)}
               <span class="badge sky">${a.type || 'checking'}</span>
-              ${a.isBillPay ? '<span class="badge green">Bill-pay</span>' : ''}
+              ${a.permanent ? '<span class="badge green">Permanent</span>' : ''}
             </div>
-            <div class="item-meta">${a.isBillPay ? 'Used to cover bills before next pay' : 'Balance tracked'}</div>
+            <div class="item-meta">${a.id === 'acct-bills' ? 'Default deposit / bills' : (a.id === 'acct-mortgage' ? 'Mortgage holds' : 'Update to match bank')}</div>
           </div>
           <div class="item-amount">${money(a.balance || 0)}</div>
           <div class="item-actions">
             <button class="icon-btn" title="Update balance" onclick="quickUpdateAccount('${a.id}')">💵</button>
-            <button class="icon-btn" onclick="editItem('accounts','${a.id}')">✏️</button>
-            <button class="icon-btn" onclick="deleteItem('accounts','${a.id}')">🗑️</button>
+            ${a.permanent ? '' : `<button class="icon-btn" onclick="deleteItem('accounts','${a.id}')">🗑️</button>`}
           </div>
         </li>
       `).join('');
@@ -881,12 +967,16 @@
     }
 
     function billPayBalance() {
+      // Available for near-term bills = Bills + Mortgage (money already staged)
+      const bills = getAccountById('acct-bills');
+      const mort = getAccountById('acct-mortgage');
+      let total = 0;
+      if (bills) total += Number(bills.balance) || 0;
+      if (mort) total += Number(mort.balance) || 0;
+      if (total > 0 || bills || mort) return total;
       const accounts = state.accounts || [];
       const marked = accounts.filter(a => a.isBillPay);
       if (marked.length) return marked.reduce((s, a) => s + (Number(a.balance) || 0), 0);
-      // fallback: all checking
-      const checking = accounts.filter(a => a.type === 'checking');
-      if (checking.length) return checking.reduce((s, a) => s + (Number(a.balance) || 0), 0);
       return accounts.reduce((s, a) => s + (Number(a.balance) || 0), 0);
     }
 
@@ -1203,6 +1293,7 @@
 
       updateQuickStats();
       renderAuditHistory();
+      renderRoutingForm();
       onPaycheckTypeChange();
     }
 
@@ -1456,6 +1547,13 @@
     }
 
     function deleteItem(key, id) {
+      if (key === 'accounts') {
+        const a = (state.accounts || []).find(x => x.id === id);
+        if (a && (a.permanent || PERMANENT_ACCOUNT_IDS.includes(id))) {
+          alert('Permanent accounts can’t be deleted. Update the balance instead.');
+          return;
+        }
+      }
       if (!confirm('Delete this item?')) return;
       state[key] = state[key].filter(x => x.id !== id);
       save();
@@ -1752,14 +1850,14 @@
       resultEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
-    function getBillPayAccount() {
-      const accounts = state.accounts || [];
-      return accounts.find(a => a.isBillPay) || accounts.find(a => a.type === 'checking') || accounts[0] || null;
-    }
-
-    function getSavingsAccount() {
-      const accounts = state.accounts || [];
-      return accounts.find(a => a.type === 'savings' && !a.isBillPay) || null;
+    function transfer(fromId, toId, amount) {
+      const amt = round2(amount);
+      if (amt <= 0) return;
+      if (fromId === toId) return;
+      const from = getAccountById(fromId);
+      const to = getAccountById(toId);
+      if (from) from.balance = round2((Number(from.balance) || 0) - amt);
+      if (to) to.balance = round2((Number(to.balance) || 0) + amt);
     }
 
     function applyPlan() {
@@ -1767,39 +1865,64 @@
         alert('Generate a plan first');
         return;
       }
-      if (!(state.accounts || []).length) {
-        alert('Add a bank account (Goals → Bank Accounts) and mark one as Bill-pay first.');
+      ensurePermanentAccounts(state);
+      const r = state.routing || DEFAULT.routing;
+      const depositId = r.deposit || 'acct-bills';
+      const depositAcct = getAccountById(depositId);
+      if (!depositAcct) {
+        alert('Deposit account missing. Open Goals → Bank Accounts.');
         return;
       }
-      const billPay = getBillPayAccount();
-      if (!billPay) {
-        alert('Mark one account as Bill-pay so balances can update.');
-        return;
-      }
-      if (!confirm('Apply this deposit of ' + money(lastPlan.amount) + ' and update account / goal / debt balances?')) return;
+      if (!confirm('Apply deposit of ' + money(lastPlan.amount) + ' and move money into Bills / Mortgage / Pockets / Savings per your routing?')) return;
 
-      // 1) Deposit paycheck into bill-pay
-      billPay.balance = round2((Number(billPay.balance) || 0) + lastPlan.amount);
+      // 1) Full deposit lands in deposit account (usually Bills)
+      depositAcct.balance = round2((Number(depositAcct.balance) || 0) + lastPlan.amount);
 
-      const savings = getSavingsAccount();
+      const summary = [];
 
       lastPlan.alloc.forEach(line => {
         const amt = Number(line.amount) || 0;
         if (amt <= 0) return;
 
-        if (line.kind === 'leftover' || line.kind === 'everyday') {
-          // Stays in checking — already included in deposit
+        if (line.kind === 'housing') {
+          const dest = routeForCategory('housing').to;
+          transfer(depositId, dest, amt);
+          summary.push(money(amt) + ' → Mortgage Account (held until you mark Paid)');
           return;
         }
-
-        if (line.kind === 'housing' || line.kind === 'bills') {
-          // Stays in bill-pay until you actually pay (earmarked). Balance already includes deposit.
+        if (line.kind === 'bills') {
+          const dest = routeForCategory('bills').to;
+          transfer(depositId, dest, amt);
+          if (dest !== depositId) summary.push(money(amt) + ' → Bills');
+          else summary.push(money(amt) + ' stays in Bills until Paid');
           return;
         }
-
+        if (line.kind === 'everyday') {
+          const dest = routeForCategory('everyday').to;
+          transfer(depositId, dest, amt);
+          summary.push(money(amt) + ' → ' + (getAccountById(dest)?.name || 'Pocket'));
+          return;
+        }
+        if (line.kind === 'leftover') {
+          const dest = routeForCategory('leftover').to;
+          transfer(depositId, dest, amt);
+          if (dest !== depositId) summary.push(money(amt) + ' leftover → ' + (getAccountById(dest)?.name || dest));
+          return;
+        }
+        if (line.kind === 'goal') {
+          const dest = routeForCategory('goals').to;
+          transfer(depositId, dest, amt);
+          const g = (state.goals || []).find(x => x.id === line.id);
+          if (g) g.current = round2((Number(g.current) || 0) + amt);
+          summary.push(money(amt) + ' → ' + (getAccountById(dest)?.name || 'Emergency/Savings') + (g ? ' (' + g.name + ')' : ''));
+          return;
+        }
         if (line.kind === 'debt_min') {
-          // Paying minimums now — leave checking, reduce debt balances
-          billPay.balance = round2(Math.max(0, (Number(billPay.balance) || 0) - amt));
+          const payFrom = routeForCategory('debt').payFrom || depositId;
+          // Move from deposit to pay-from if needed, then pay out
+          if (payFrom !== depositId) transfer(depositId, payFrom, amt);
+          const payer = getAccountById(payFrom);
+          if (payer) payer.balance = round2((Number(payer.balance) || 0) - amt);
           let left = amt;
           const debts = (state.debts || []).filter(d => !isPaidThisPeriod(d) && (Number(d.minPayment) || 0) > 0);
           const totalMin = debts.reduce((s, d) => s + (Number(d.minPayment) || 0), 0) || 1;
@@ -1810,41 +1933,35 @@
             left = round2(left - pay);
             if (pay >= (Number(d.minPayment) || 0) - 0.02) d.paidPeriod = periodKey();
           });
+          summary.push(money(amt) + ' debt mins paid from ' + (payer?.name || 'account'));
           return;
         }
-
         if (line.kind === 'extra_debt' && line.id) {
-          billPay.balance = round2(Math.max(0, (Number(billPay.balance) || 0) - amt));
+          const payFrom = routeForCategory('debt').payFrom || depositId;
+          if (payFrom !== depositId) transfer(depositId, payFrom, amt);
+          const payer = getAccountById(payFrom);
+          if (payer) payer.balance = round2((Number(payer.balance) || 0) - amt);
           const d = (state.debts || []).find(x => x.id === line.id);
           if (d) d.balance = round2(Math.max(0, (Number(d.balance) || 0) - amt));
+          summary.push(money(amt) + ' extra → ' + (d?.name || 'debt'));
           return;
         }
-
-        if (line.kind === 'goal' && line.id) {
-          billPay.balance = round2(Math.max(0, (Number(billPay.balance) || 0) - amt));
-          if (savings) savings.balance = round2((Number(savings.balance) || 0) + amt);
-          const g = (state.goals || []).find(x => x.id === line.id);
-          if (g) g.current = round2((Number(g.current) || 0) + amt);
-          return;
-        }
-
-        // Fallback: leave in checking
       });
 
       save();
       lastPlan = null;
+      const lines = (state.accounts || []).map(a =>
+        `<div class="alloc-row"><div class="label">${escapeHtml(a.name)}</div><div class="amt">${money(a.balance)}</div></div>`
+      ).join('');
       document.getElementById('plan-result').innerHTML = `
         <div class="result-box good">
-          <h3>Balances updated</h3>
-          <p style="font-size:0.9rem;color:var(--muted);">
-            Deposit applied. Bill-pay is now <strong style="color:var(--text)">${money(billPay.balance)}</strong>
-            ${savings ? ' · Savings <strong style="color:var(--text)">' + money(savings.balance) + '</strong>' : ''}.
-            Match these to your real bank if anything differs (fees, timing).
-          </p>
+          <h3>Accounts updated</h3>
+          <p style="font-size:0.85rem;color:var(--muted);margin-bottom:10px;">Match these to your real bank. When you pay a bill, tap ✅ — it pulls from the routed account.</p>
+          ${lines}
+          ${summary.length ? `<p class="section-label">Moves this deposit</p><ul class="rec-list">${summary.map(s => '<li>' + escapeHtml(s) + '</li>').join('')}</ul>` : ''}
         </div>
       `;
       updateQuickStats();
-      renderAccountsList();
       renderAll();
     }
 
@@ -2443,6 +2560,55 @@
       state.paySchedule.advanceAmount = Number(val) || 3000;
       save();
       onPaycheckTypeChange();
+    }
+
+    function accountOptionsHtml(selectedId) {
+      return (state.accounts || []).map(a =>
+        `<option value="${a.id}" ${a.id === selectedId ? 'selected' : ''}>${escapeHtml(a.name)}</option>`
+      ).join('');
+    }
+
+    function renderRoutingForm() {
+      const el = document.getElementById('routing-fields');
+      if (!el) return;
+      ensurePermanentAccounts(state);
+      const r = state.routing || DEFAULT.routing;
+      const rows = [
+        { key: 'deposit', label: 'Paycheck deposits into', single: true },
+        { key: 'housing', label: 'Housing / mortgage' },
+        { key: 'bills', label: 'Recurring bills' },
+        { key: 'debt', label: 'Debt payments' },
+        { key: 'everyday', label: 'Everyday spending' },
+        { key: 'leftover', label: 'Leftover / flex' },
+        { key: 'goals', label: 'Goals (cushion, etc.)' }
+      ];
+      el.innerHTML = rows.map(row => {
+        if (row.single) {
+          return `<label>${row.label}</label>
+            <select id="route-deposit">${accountOptionsHtml(r.deposit || 'acct-bills')}</select>`;
+        }
+        const cur = r[row.key] || {};
+        return `<div class="section-label">${row.label}</div>
+          <label>Move deposit slice to</label>
+          <select id="route-${row.key}-to">${accountOptionsHtml(cur.to || 'acct-bills')}</select>
+          <label>Pull from when marked Paid</label>
+          <select id="route-${row.key}-from">${accountOptionsHtml(cur.payFrom || cur.to || 'acct-bills')}</select>`;
+      }).join('');
+    }
+
+    function saveRoutingFromForm() {
+      if (!state.routing) state.routing = structuredClone(DEFAULT.routing);
+      const dep = document.getElementById('route-deposit');
+      if (dep) state.routing.deposit = dep.value;
+      ['housing', 'bills', 'debt', 'everyday', 'leftover', 'goals'].forEach(key => {
+        const toEl = document.getElementById('route-' + key + '-to');
+        const fromEl = document.getElementById('route-' + key + '-from');
+        if (!state.routing[key]) state.routing[key] = {};
+        if (toEl) state.routing[key].to = toEl.value;
+        if (fromEl) state.routing[key].payFrom = fromEl.value;
+      });
+      save();
+      alert('Routing saved');
     }
 
     function icsDate(d) {
