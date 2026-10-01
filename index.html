@@ -399,28 +399,22 @@
       </div>
 
       <div class="card">
-        <h2><span class="dot" style="background:var(--accent)"></span> This Paycheck</h2>
+        <h2><span class="dot" style="background:var(--accent)"></span> Deposit & auto-allocate</h2>
         <p style="font-size:0.8rem;color:var(--muted);margin-bottom:10px;">
-          Your schedule: <strong>$3,000 advance on the 25th</strong>, main paycheck on the <strong>10th</strong>. Pick which one you’re allocating.
+          Enter this deposit. The app funds what’s due (mortgage, bills, debt mins), then your monthly goal amounts, then leftover stays in checking. No 50/50 choices.
         </p>
-        <label>Which paycheck is this?</label>
+        <label>Which deposit is this?</label>
         <select id="paycheck-type" onchange="onPaycheckTypeChange()">
           <option value="advance">Advance — 25th ($3,000 flat)</option>
           <option value="main">Main paycheck — 10th</option>
           <option value="other">Other / one-off</option>
         </select>
-        <label>Paycheck amount ($)</label>
+        <label>Amount deposited ($)</label>
         <input type="number" id="paycheck-amount" inputmode="decimal" placeholder="e.g. 3000.00" step="0.01" min="0" />
-        <label>How to split monthly bills across the two pays</label>
-        <select id="split-method">
-          <option value="half">50/50 — each check covers half of monthly fixed costs</option>
-          <option value="proportional">Proportional — by check size (needs both amounts)</option>
-          <option value="advance-first">Advance first — 25th covers what it can; 10th covers the rest</option>
-        </select>
         <p class="tip" id="pay-hint" style="margin-top:10px;">
-          Advance day: use this for the $3,000 on the 25th. Monthly bills are split so neither check is overloaded.
+          Uses your bill-pay account balance + due dates to decide where money must go.
         </p>
-        <button class="btn" onclick="generatePlan()">Generate Split Plan</button>
+        <button class="btn" onclick="generatePlan()">Auto-allocate this check</button>
       </div>
 
       <div id="plan-result" class="hidden"></div>
@@ -1479,11 +1473,11 @@
         } else if (amt && !amt.value) {
           amt.value = sched.advanceAmount;
         }
-        if (hint) hint.textContent = 'Advance (25th): $' + Number(sched.advanceAmount).toLocaleString() + ' flat. Use 50/50 or Advance-first so the 10th check isn’t overloaded with all the bills.';
+        if (hint) hint.textContent = 'Advance (25th): $' + Number(sched.advanceAmount).toLocaleString() + ' — auto-funds what’s due, then goals, rest stays in checking.';
       } else if (type === 'main') {
-        if (hint) hint.textContent = 'Main paycheck (10th): enter the full amount deposited. This usually covers remaining bills + cushion/debt.';
+        if (hint) hint.textContent = 'Main paycheck (10th): enter what hit the bank. Auto-covers shortfalls (e.g. mortgage) using your bill-pay balance.';
       } else {
-        if (hint) hint.textContent = 'One-off or other income — treated like a single pay period.';
+        if (hint) hint.textContent = 'Other deposit — auto-allocated the same way.';
       }
     }
 
@@ -1549,14 +1543,17 @@
       };
     }
 
+    let lastPlan = null; // { amount, alloc: [{kind, id, label, amount, ...}] }
+
     function generatePlan() {
       const amount = Number(document.getElementById('paycheck-amount').value);
       if (!amount || amount <= 0) {
-        alert('Enter a paycheck amount first');
+        alert('Enter the deposit amount first');
         return;
       }
       const payType = document.getElementById('paycheck-type')?.value || 'main';
-      const splitMethod = document.getElementById('split-method')?.value || 'half';
+      // Fully automatic: fund what’s due using account balance; no 50/50 picker
+      const splitMethod = 'advance-first';
       state.payFrequency = 24;
       save();
 
@@ -1566,84 +1563,73 @@
       let targetDebtMin = shares.shareDebtMin;
       let targetEveryday = shares.shareEveryday;
 
-      // Fund obligations due in the next ~40 days (covers next mortgage even if after next paycheck)
       const fund = fundingNeed(40);
       const shortfall = fund.shortfall;
 
-      // Raise targets to at least what's still uncovered after bill-pay balance
+      // Must cover shortfalls first (mortgage, bills, debt mins due soon)
       targetDebtMin = Math.max(targetDebtMin, fund.needDebt);
       targetHousing = Math.max(targetHousing, fund.needHousing);
       targetBills = Math.max(targetBills, fund.needBills);
 
-      // Priority spend from this paycheck only — never more than remaining
-      // Order: debt mins due → housing due → bills due → cushion/extra debt → everyday → leftover
       let remaining = round2(amount);
       const alloc = [];
 
-      function take(label, target, color, note) {
+      function take(label, target, color, note, kind, id) {
         const want = Math.max(0, Number(target) || 0);
         const got = round2(Math.min(remaining, want));
         if (got > 0.005) {
-          alloc.push({ label, amount: got, color, note });
+          alloc.push({ label, amount: got, color, note, kind: kind || 'other', id: id || null });
           remaining = round2(remaining - got);
         }
         return got;
       }
 
-      // 1) Debt minimums (boosted if due soon and not covered by account)
+      // 1) Debt minimums due / needed
       take(
         'Debt Minimums',
         targetDebtMin,
         'rose',
-        fund.needDebt > shares.shareDebtMin + 0.01 ? 'includes amounts due soon' : 'always first priority'
+        fund.needDebt > 0.01 ? 'due soon — pay from this deposit' : 'minimums',
+        'debt_min',
+        null
       );
 
-      // 2) Housing — must cover mortgage shortfall
+      // 2) Housing / mortgage
       take(
-        'Housing (mortgage/rent, utilities…)',
+        'Housing (mortgage/rent…)',
         targetHousing,
         'green',
-        fund.needHousing > shares.shareHousing + 0.01 ? 'must be in account before due date' : shares.note
+        fund.needHousing > 0.01 ? 'keep in bill-pay until due' : shares.note,
+        'housing',
+        null
       );
 
-      // 3) Recurring bills due soon
+      // 3) Bills
       take(
         'Recurring Bills',
         targetBills,
         'sky',
-        fund.needBills > shares.shareBills + 0.01 ? 'due soon — fund now' : shares.note
+        fund.needBills > 0.01 ? 'due soon — fund now' : shares.note,
+        'bills',
+        null
       );
 
-      // 4) Goal contributions (monthly amount ÷ 2 pays) — not the full target
-      //    Then in debt phase, extra goes to credit cards first
-      const paysPerMonth = 2; // 10th + 25th
+      const paysPerMonth = 2;
       const goalsToFund = (state.goals || []).filter(g => {
         const left = Math.max(0, (Number(g.target) || 0) - (Number(g.current) || 0));
         const monthly = Number(g.monthlyContribute) || 0;
         return left > 0.01 && monthly > 0.01;
       });
-
-      // Primary cushion first (if any), then other goals
       goalsToFund.sort((a, b) => (b.isPrimary ? 1 : 0) - (a.isPrimary ? 1 : 0));
 
-      if (state.phase === 'cushion' || goalsToFund.length) {
-        // Always allow the monthly goal contributions (even in debt phase if user set them)
-        // but in debt phase put goal contributions after a smaller priority - actually user asked cushion less priority
-        // Order: in cushion phase, fund goals at monthly rate then leftover is flex
-        // in debt phase: extra debt first, then optional goals
-        if (state.phase === 'cushion') {
-          goalsToFund.forEach(g => {
-            const left = Math.max(0, (Number(g.target) || 0) - (Number(g.current) || 0));
-            const perCheck = round2((Number(g.monthlyContribute) || 0) / paysPerMonth);
-            const want = Math.min(left, perCheck);
-            take(
-              g.name,
-              want,
-              g.isPrimary ? 'green' : 'purple',
-              money(g.monthlyContribute) + '/mo → ~' + money(perCheck) + '/check'
-            );
-          });
-        }
+      if (state.phase === 'cushion') {
+        goalsToFund.forEach(g => {
+          const left = Math.max(0, (Number(g.target) || 0) - (Number(g.current) || 0));
+          const perCheck = round2((Number(g.monthlyContribute) || 0) / paysPerMonth);
+          const want = Math.min(left, perCheck);
+          take(g.name, want, g.isPrimary ? 'green' : 'purple',
+            money(g.monthlyContribute) + '/mo → ~' + money(perCheck) + '/check', 'goal', g.id);
+        });
       }
 
       if (state.phase === 'debt') {
@@ -1658,32 +1644,28 @@
           });
         for (const d of debtsSorted) {
           if (remaining < 0.01) break;
-          take(
-            'Extra → ' + d.name,
-            d.balance,
+          take('Extra → ' + d.name, d.balance,
             d.type === 'credit' ? 'rose' : 'amber',
-            d.type === 'credit' ? 'credit card priority' : 'other debt'
-          );
+            d.type === 'credit' ? 'credit card priority' : 'other debt',
+            'extra_debt', d.id);
         }
-        // Optional: still put small goal contributions after debt attack if money left
         goalsToFund.forEach(g => {
           const left = Math.max(0, (Number(g.target) || 0) - (Number(g.current) || 0));
           const perCheck = round2((Number(g.monthlyContribute) || 0) / paysPerMonth);
-          const want = Math.min(left, perCheck);
-          take(g.name, want, 'purple', money(g.monthlyContribute) + '/mo');
+          take(g.name, Math.min(left, perCheck), 'purple', money(g.monthlyContribute) + '/mo', 'goal', g.id);
         });
       }
 
-      // 5) Everyday + leftover
-      take('Everyday Spending', targetEveryday, 'purple', 'groceries, gas, dining…');
+      take('Everyday Spending', targetEveryday, 'purple', 'stays available for spending', 'everyday', null);
       if (remaining > 0.005) {
-        take('Leftover / Flex', remaining, 'amber', 'buffer, fun, or extra savings');
+        take('Leftover in checking', remaining, 'amber', 'stays in bill-pay account', 'leftover', null);
       }
 
-      // Sanity: allocated must equal paycheck (within a cent)
       const totalAllocated = round2(alloc.reduce((s, l) => s + l.amount, 0));
       const payLabel = payType === 'advance' ? 'Advance (25th)' : (payType === 'main' ? 'Main paycheck (10th)' : 'Other pay');
       const mathOk = Math.abs(totalAllocated - amount) < 0.02;
+
+      lastPlan = { amount, payType, payLabel, alloc: alloc.map(a => ({ ...a })), fundAvailable: fund.available };
 
       // Context (NOT part of the paycheck total)
       let contextHtml = '';
@@ -1751,19 +1733,16 @@
           ${!mathOk ? `<p class="tip warn" style="margin-top:8px;">Math check failed — please screenshot and report.</p>` : `<p style="font-size:0.75rem;color:var(--muted);margin-top:8px;">✓ Adds up to the paycheck exactly</p>`}
         </div>
         <div class="card">
-          <h2>What to do with this check</h2>
-          <ol style="padding-left:18px;font-size:0.9rem;color:var(--muted);line-height:1.6;">
-            ${alloc.map(l => `<li>Move <strong style="color:var(--text)">${money(l.amount)}</strong> → ${escapeHtml(l.label)}</li>`).join('')}
+          <h2>Apply to accounts</h2>
+          <p style="font-size:0.8rem;color:var(--muted);margin-bottom:8px;">
+            After the money hits your real bank, tap below. The app will:
+            deposit into bill-pay checking, subtract payments (housing/bills/debt), add goal savings, and update balances.
+          </p>
+          <ol style="padding-left:18px;font-size:0.85rem;color:var(--muted);line-height:1.55;margin-bottom:10px;">
+            ${alloc.map(l => `<li><strong style="color:var(--text)">${money(l.amount)}</strong> → ${escapeHtml(l.label)}</li>`).join('')}
           </ol>
-          ${cushionLine ? `
-            <p class="tip" style="margin-top:12px;">
-              After this transfer, ${escapeHtml(primary?.name || 'goal')} ~${money((primary?.current || 0) + cushionLine.amount)} of ${money(primary?.target || 0)}.
-              Update Goals (or Audit) after you move the money.
-            </p>
-          ` : ''}
-          ${state.phase === 'debt' ? `
-            <p class="tip" style="margin-top:12px;">After paying, update debt balances (or run a Weekly Audit).</p>
-          ` : ''}
+          <button class="btn" onclick="applyPlan()">Apply plan &amp; update balances</button>
+          <p class="tip" style="margin-top:10px;">Only apply once per deposit. Requires a bill-pay account on the Goals tab.</p>
         </div>
       `;
 
@@ -1771,6 +1750,102 @@
       resultEl.innerHTML = html;
       resultEl.classList.remove('hidden');
       resultEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function getBillPayAccount() {
+      const accounts = state.accounts || [];
+      return accounts.find(a => a.isBillPay) || accounts.find(a => a.type === 'checking') || accounts[0] || null;
+    }
+
+    function getSavingsAccount() {
+      const accounts = state.accounts || [];
+      return accounts.find(a => a.type === 'savings' && !a.isBillPay) || null;
+    }
+
+    function applyPlan() {
+      if (!lastPlan || !lastPlan.alloc || !lastPlan.amount) {
+        alert('Generate a plan first');
+        return;
+      }
+      if (!(state.accounts || []).length) {
+        alert('Add a bank account (Goals → Bank Accounts) and mark one as Bill-pay first.');
+        return;
+      }
+      const billPay = getBillPayAccount();
+      if (!billPay) {
+        alert('Mark one account as Bill-pay so balances can update.');
+        return;
+      }
+      if (!confirm('Apply this deposit of ' + money(lastPlan.amount) + ' and update account / goal / debt balances?')) return;
+
+      // 1) Deposit paycheck into bill-pay
+      billPay.balance = round2((Number(billPay.balance) || 0) + lastPlan.amount);
+
+      const savings = getSavingsAccount();
+
+      lastPlan.alloc.forEach(line => {
+        const amt = Number(line.amount) || 0;
+        if (amt <= 0) return;
+
+        if (line.kind === 'leftover' || line.kind === 'everyday') {
+          // Stays in checking — already included in deposit
+          return;
+        }
+
+        if (line.kind === 'housing' || line.kind === 'bills') {
+          // Stays in bill-pay until you actually pay (earmarked). Balance already includes deposit.
+          return;
+        }
+
+        if (line.kind === 'debt_min') {
+          // Paying minimums now — leave checking, reduce debt balances
+          billPay.balance = round2(Math.max(0, (Number(billPay.balance) || 0) - amt));
+          let left = amt;
+          const debts = (state.debts || []).filter(d => !isPaidThisPeriod(d) && (Number(d.minPayment) || 0) > 0);
+          const totalMin = debts.reduce((s, d) => s + (Number(d.minPayment) || 0), 0) || 1;
+          debts.forEach(d => {
+            const share = round2(amt * ((Number(d.minPayment) || 0) / totalMin));
+            const pay = Math.min(share, left, Number(d.balance) || 0);
+            d.balance = round2(Math.max(0, (Number(d.balance) || 0) - pay));
+            left = round2(left - pay);
+            if (pay >= (Number(d.minPayment) || 0) - 0.02) d.paidPeriod = periodKey();
+          });
+          return;
+        }
+
+        if (line.kind === 'extra_debt' && line.id) {
+          billPay.balance = round2(Math.max(0, (Number(billPay.balance) || 0) - amt));
+          const d = (state.debts || []).find(x => x.id === line.id);
+          if (d) d.balance = round2(Math.max(0, (Number(d.balance) || 0) - amt));
+          return;
+        }
+
+        if (line.kind === 'goal' && line.id) {
+          billPay.balance = round2(Math.max(0, (Number(billPay.balance) || 0) - amt));
+          if (savings) savings.balance = round2((Number(savings.balance) || 0) + amt);
+          const g = (state.goals || []).find(x => x.id === line.id);
+          if (g) g.current = round2((Number(g.current) || 0) + amt);
+          return;
+        }
+
+        // Fallback: leave in checking
+      });
+
+      save();
+      lastPlan = null;
+      document.getElementById('plan-result').innerHTML = `
+        <div class="result-box good">
+          <h3>Balances updated</h3>
+          <p style="font-size:0.9rem;color:var(--muted);">
+            Deposit applied. Bill-pay is now <strong style="color:var(--text)">${money(billPay.balance)}</strong>
+            ${savings ? ' · Savings <strong style="color:var(--text)">' + money(savings.balance) + '</strong>' : ''}.
+            Match these to your real bank if anything differs (fees, timing).
+          </p>
+        </div>
+      `;
+      updateQuickStats();
+      renderAccountsList();
+      renderAll();
     }
 
     function round2(n) {
