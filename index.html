@@ -384,6 +384,9 @@
       <button data-tab="goals" onclick="switchTab('goals')">
         <span class="icon">🎯</span> Goals
       </button>
+      <button data-tab="log" onclick="switchTab('log')">
+        <span class="icon">📓</span> Log
+      </button>
       <button data-tab="settings" onclick="switchTab('settings')">
         <span class="icon">⚙️</span> More
       </button>
@@ -425,10 +428,31 @@
           <button id="phase-cushion" class="active" onclick="setPhase('cushion')">1. Build Cushion</button>
           <button id="phase-debt" onclick="setPhase('debt')">2. Attack Debt</button>
         </div>
-        <p class="tip" id="phase-tip">Right now: cover minimums + grow your house & baby cash cushion. Extra goes to cushion until you switch modes.</p>
+        <p class="tip" id="phase-tip">Right now: cover minimums + grow your house & baby cash cushion at your monthly rate.</p>
+        <div id="aggression-panel" class="hidden">
+          <label style="margin-top:12px;">Debt aggression — how much extra goes to debt vs kept</label>
+          <input type="range" id="debt-aggression" min="0" max="100" step="5" value="70" oninput="onAggressionChange(this.value)" style="width:100%;accent-color:var(--rose);" />
+          <div style="display:flex;justify-content:space-between;font-size:0.8rem;margin-top:6px;">
+            <span style="color:var(--muted)">Keep more</span>
+            <span id="aggression-label" style="font-weight:600;color:var(--rose)">70% to debt</span>
+            <span style="color:var(--muted)">Max debt</span>
+          </div>
+          <p class="tip" id="aggression-readout" style="margin-top:8px;">After required bills, this % of leftover attacks debt. The rest stays as buffer.</p>
+        </div>
       </div>
 
       <div class="summary-grid" id="quick-stats"></div>
+    </div>
+
+    <!-- ========== LOG TAB ========== -->
+    <div id="tab-log" class="hidden">
+      <div class="card">
+        <h2><span class="dot" style="background:var(--green)"></span> Monthly log</h2>
+        <p style="font-size:0.8rem;color:var(--muted);margin-bottom:12px;">
+          History of money saved, debt paid, and unexpected costs. Savings/debt update when you apply a paycheck; log surprises on the <strong>Audit</strong> tab during your weekly check-in.
+        </p>
+      </div>
+      <div id="log-list"></div>
     </div>
 
     <!-- ========== AUDIT TAB ========== -->
@@ -436,7 +460,7 @@
       <div class="card">
         <h2><span class="dot" style="background:var(--purple)"></span> Weekly Check-in</h2>
         <p style="font-size:0.8rem;color:var(--muted);margin-bottom:12px;">
-          Log balances any day (e.g. every Friday). The app compares to your last audit and tells you what’s working and what to adjust.
+          Log balances any day (e.g. every Friday). Compare to last week, record unexpected costs, and see what to adjust.
         </p>
         <label>Audit date</label>
         <input type="date" id="audit-date" />
@@ -444,6 +468,21 @@
         <label>Notes (optional)</label>
         <textarea id="audit-notes" placeholder="e.g. Paid extra on Chase, baby shower gifts this week…"></textarea>
         <button class="btn" onclick="runAudit()">Run Weekly Audit</button>
+      </div>
+
+      <div class="card">
+        <h2><span class="dot" style="background:var(--amber)"></span> Unexpected costs</h2>
+        <p style="font-size:0.8rem;color:var(--muted);margin-bottom:10px;">
+          Log any time — no full audit needed. Each entry is added to this month’s Log. Add as many as you need.
+        </p>
+        <label>Date</label>
+        <input type="date" id="unexpected-date" />
+        <label>Amount ($)</label>
+        <input type="number" id="unexpected-amt" inputmode="decimal" step="0.01" min="0" placeholder="0.00" />
+        <label>What was it?</label>
+        <input type="text" id="unexpected-note" placeholder="e.g. car repair, medical co-pay" />
+        <button class="btn secondary" onclick="addUnexpectedCostEntry()">+ Add unexpected cost</button>
+        <div id="unexpected-recent" style="margin-top:12px;"></div>
       </div>
 
       <div id="audit-result" class="hidden"></div>
@@ -481,7 +520,11 @@
         <button class="btn secondary small" onclick="openModal('bills')">+ Add Bill</button>
       </div>
       <div class="card">
-        <h2><span class="dot" style="background:var(--purple)"></span> Everyday Spending (monthly targets)</h2>
+        <h2><span class="dot" style="background:var(--purple)"></span> Between-check allowance</h2>
+        <p style="font-size:0.8rem;color:var(--muted);margin-bottom:10px;">
+          Funded each paycheck (10th &amp; 25th), not monthly. Default plan: <strong>$750</strong> total.
+        </p>
+        <div id="allowance-total" style="font-size:1.1rem;font-weight:700;margin-bottom:10px;color:var(--accent);"></div>
         <ul class="item-list" id="list-everyday"></ul>
         <button class="btn secondary small" onclick="openModal('everyday')">+ Add Category</button>
       </div>
@@ -608,7 +651,15 @@
       goals: [
         { id: 'cushion', name: 'House + Baby Cash Cushion', target: 10000, current: 0, isPrimary: true, monthlyContribute: 200 }
       ],
-      everyday: [],
+      // Per-paycheck allowance (between checks) — matches family $750 plan
+      everyday: [
+        { id: 'ev-groc', name: 'Groceries', amount: 100, accountTo: 'acct-bills' },
+        { id: 'ev-bri', name: 'Bri coffee/spending', amount: 50, accountTo: 'acct-bri' },
+        { id: 'ev-diesel', name: 'Trent diesel', amount: 200, accountTo: 'acct-trent' },
+        { id: 'ev-trent', name: 'Trent spending', amount: 200, accountTo: 'acct-trent' },
+        { id: 'ev-house', name: 'Household/misc.', amount: 100, accountTo: 'acct-bills' },
+        { id: 'ev-buffer', name: 'Buffer', amount: 100, accountTo: 'acct-bills' }
+      ],
       income: [],
       accounts: [
         { id: 'acct-bills', name: 'Bills', type: 'checking', balance: 0, isBillPay: true, permanent: true },
@@ -627,6 +678,8 @@
         leftover: { to: 'acct-bills', payFrom: 'acct-bills' },
         goals: { to: 'acct-emergency', payFrom: 'acct-emergency' }
       },
+      debtAggression: 70, // 0–100: % of discretionary money that attacks debt
+      monthlyLogs: [],
       audits: []
     };
 
@@ -662,6 +715,11 @@
         if (!merged.paySchedule) merged.paySchedule = structuredClone(DEFAULT.paySchedule);
         else merged.paySchedule = { ...structuredClone(DEFAULT.paySchedule), ...merged.paySchedule };
         merged = ensurePermanentAccounts(merged);
+        if (!merged.monthlyLogs) merged.monthlyLogs = [];
+        if (merged.debtAggression == null) merged.debtAggression = 70;
+        if (!merged.everyday || !merged.everyday.length) {
+          merged.everyday = structuredClone(DEFAULT.everyday);
+        }
         if (merged.goals && Array.isArray(merged.goals)) {
           merged.goals.forEach(g => {
             if (g.monthlyContribute == null) g.monthlyContribute = g.isPrimary ? 200 : 0;
@@ -684,7 +742,7 @@
 
     // ========== TABS ==========
     function switchTab(name) {
-      ['allocate','audit','budget','debts','goals','settings'].forEach(t => {
+      ['allocate','audit','budget','debts','goals','log','settings'].forEach(t => {
         const el = document.getElementById('tab-' + t);
         if (el) el.classList.toggle('hidden', t !== name);
       });
@@ -692,7 +750,11 @@
         b.classList.toggle('active', b.dataset.tab === name);
       });
       if (name === 'allocate') updateQuickStats();
-      if (name === 'audit') prepareAuditForm();
+      if (name === 'audit') {
+        prepareAuditForm();
+        renderUnexpectedRecent();
+      }
+      if (name === 'log') renderMonthlyLog();
     }
 
     // ========== PHASE ==========
@@ -701,14 +763,38 @@
       document.getElementById('phase-cushion').classList.toggle('active', p === 'cushion');
       document.getElementById('phase-debt').classList.toggle('active', p === 'debt');
       const tip = document.getElementById('phase-tip');
+      const agPanel = document.getElementById('aggression-panel');
       if (p === 'cushion') {
-        tip.textContent = 'Right now: cover minimums + grow your house & baby cash cushion. Extra goes to cushion until you switch modes.';
+        tip.textContent = 'Cover dues first, then monthly goal contributions. Leftover stays as buffer.';
         document.getElementById('header-sub').textContent = 'Build cushion → then attack debt';
+        if (agPanel) agPanel.classList.add('hidden');
       } else {
-        tip.textContent = 'Cushion mode off. Minimums still paid first. All extra goes to credit cards first, then other debts (highest balance or rate first).';
-        document.getElementById('header-sub').textContent = 'Attacking debt — credit cards first';
+        tip.textContent = 'Minimums first. Use the slider to choose how aggressive extra debt payments are.';
+        document.getElementById('header-sub').textContent = 'Attacking debt — set aggression';
+        if (agPanel) agPanel.classList.remove('hidden');
+        const sl = document.getElementById('debt-aggression');
+        if (sl) {
+          sl.value = state.debtAggression != null ? state.debtAggression : 70;
+          onAggressionChange(sl.value);
+        }
       }
       save();
+    }
+
+    function onAggressionChange(val) {
+      const v = Number(val) || 0;
+      state.debtAggression = v;
+      const label = document.getElementById('aggression-label');
+      if (label) label.textContent = v + '% to debt';
+      const ro = document.getElementById('aggression-readout');
+      if (ro) {
+        ro.textContent = v === 0
+          ? 'All leftover after bills stays as buffer — no extra debt payment.'
+          : v === 100
+            ? 'All leftover after bills goes to debt (credit cards first).'
+            : v + '% of leftover after required bills goes to debt; ' + (100 - v) + '% stays as buffer.';
+      }
+      try { localStorage.setItem('paycheckPlanner', JSON.stringify(state)); } catch (e) {}
     }
 
     // ========== RENDER LISTS ==========
@@ -721,6 +807,35 @@
       if (Math.abs(v) < 0.005) return '<span class="delta-flat">$0.00</span>';
       if (v > 0) return '<span class="delta-up">+' + money(v) + '</span>';
       return '<span class="delta-down">' + money(v) + '</span>';
+    }
+
+    function renderEverydayList() {
+      const el = document.getElementById('list-everyday');
+      const totalEl = document.getElementById('allowance-total');
+      if (!el) return;
+      const items = state.everyday || [];
+      const total = items.reduce((s, i) => s + (Number(i.amount) || 0), 0);
+      if (totalEl) totalEl.textContent = 'Allowance total: ' + money(total) + ' per paycheck';
+      if (!items.length) {
+        el.innerHTML = '<li class="empty">Add allowance categories (e.g. groceries, diesel)</li>';
+        return;
+      }
+      el.innerHTML = items.map(item => {
+        const acct = getAccountById(item.accountTo);
+        return `
+          <li class="item">
+            <div class="item-info">
+              <div class="item-name">${escapeHtml(item.name)}</div>
+              <div class="item-meta">→ ${acct ? escapeHtml(acct.name) : 'Bills'} · each paycheck</div>
+            </div>
+            <div class="item-amount">${money(item.amount)}</div>
+            <div class="item-actions">
+              <button class="icon-btn" onclick="editItem('everyday','${item.id}')">✏️</button>
+              <button class="icon-btn" onclick="deleteItem('everyday','${item.id}')">🗑️</button>
+            </div>
+          </li>
+        `;
+      }).join('');
     }
 
     function renderList(key, containerId, formatter) {
@@ -1195,7 +1310,7 @@
     function renderAll() {
       renderHousingList();
       renderBillsList();
-      renderList('everyday', 'list-everyday', i => 'Monthly target');
+      renderEverydayList();
       renderList('income', 'list-income', i => (i.frequency || 'per paycheck'));
       renderAccountsList();
       renderComingUp();
@@ -1237,15 +1352,17 @@
         if (!state.goals.length) {
           gEl.innerHTML = '<li class="empty">No goals yet</li>';
         } else {
+          syncCushionGoalFromAccount();
           gEl.innerHTML = state.goals.map(g => {
-            const pct = g.target > 0 ? Math.min(100, Math.round((g.current / g.target) * 1000) / 10) : 0;
+            const cur = g.isPrimary ? cushionActualBalance() : (Number(g.current) || 0);
+            const pct = g.target > 0 ? Math.min(100, Math.round((cur / g.target) * 1000) / 10) : 0;
             const fillClass = pct >= 100 ? '' : (pct >= 50 ? 'sky' : (pct >= 25 ? 'amber' : 'rose'));
             return `
               <li class="item" style="flex-direction:column;align-items:stretch;">
                 <div style="display:flex;justify-content:space-between;width:100%;">
                   <div class="item-info">
                     <div class="item-name">${escapeHtml(g.name)} ${g.isPrimary ? '<span class="badge green">Primary</span>' : ''}</div>
-                    <div class="item-meta">${money(g.current)} of ${money(g.target)} · ${money(g.monthlyContribute != null ? g.monthlyContribute : 0)}/mo</div>
+                    <div class="item-meta">${money(cur)} of ${money(g.target)} · ${money(g.monthlyContribute != null ? g.monthlyContribute : 0)}/mo${g.isPrimary ? ' · Emergency Fund acct' : ''}</div>
                   </div>
                   <div class="item-actions">
                     <button class="icon-btn" onclick="editItem('goals','${g.id}')">✏️</button>
@@ -1273,12 +1390,20 @@
       const tip = document.getElementById('phase-tip');
       const sub = document.getElementById('header-sub');
       if (tip && sub) {
+        const agPanel = document.getElementById('aggression-panel');
         if (state.phase === 'cushion') {
-          tip.textContent = 'Right now: cover minimums + grow your house & baby cash cushion. Extra goes to cushion until you switch modes.';
+          tip.textContent = 'Cover dues first, then monthly goal contributions. Leftover stays as buffer.';
           sub.textContent = 'Build cushion → then attack debt';
+          if (agPanel) agPanel.classList.add('hidden');
         } else {
-          tip.textContent = 'Cushion mode off. Minimums still paid first. All extra goes to credit cards first, then other debts (highest balance or rate first).';
-          sub.textContent = 'Attacking debt — credit cards first';
+          tip.textContent = 'Minimums first. Use the slider for how aggressive extra debt payments are.';
+          sub.textContent = 'Attacking debt — set aggression';
+          if (agPanel) agPanel.classList.remove('hidden');
+          const sl = document.getElementById('debt-aggression');
+          if (sl) {
+            sl.value = state.debtAggression != null ? state.debtAggression : 70;
+            onAggressionChange(sl.value);
+          }
         }
       }
 
@@ -1297,15 +1422,31 @@
       onPaycheckTypeChange();
     }
 
+    function cushionActualBalance() {
+      // Prefer real Emergency Fund account; fall back to primary goal.current
+      const emerg = getAccountById('acct-emergency');
+      const primary = state.goals.find(g => g.isPrimary) || state.goals[0];
+      if (emerg) return Number(emerg.balance) || 0;
+      return primary ? (Number(primary.current) || 0) : 0;
+    }
+
+    function syncCushionGoalFromAccount() {
+      const primary = state.goals.find(g => g.isPrimary) || state.goals[0];
+      const emerg = getAccountById('acct-emergency');
+      if (primary && emerg) primary.current = Number(emerg.balance) || 0;
+    }
+
     function updateQuickStats() {
       const el = document.getElementById('quick-stats');
       if (!el) return;
+      syncCushionGoalFromAccount();
       const monthlyFixed = sum(state.housing, 'amount') + sum(state.bills, 'amount') + sum(state.debts, 'minPayment');
-      const perCheckFixed = monthlyFixed / 2; // 10th + 25th
       const primary = state.goals.find(g => g.isPrimary) || state.goals[0];
-      const cushionLeft = primary ? Math.max(0, primary.target - primary.current) : 0;
-      const cushionPct = primary && primary.target > 0
-        ? Math.min(100, Math.round((primary.current / primary.target) * 1000) / 10)
+      const cushionNow = cushionActualBalance();
+      const cushionTarget = primary ? (Number(primary.target) || 0) : 0;
+      const cushionLeft = Math.max(0, cushionTarget - cushionNow);
+      const cushionPct = cushionTarget > 0
+        ? Math.min(100, Math.round((cushionNow / cushionTarget) * 1000) / 10)
         : 0;
       const totalDebt = sum(state.debts, 'balance');
       const sched = state.paySchedule || DEFAULT.paySchedule;
@@ -1322,26 +1463,26 @@
           <div class="value">${money(monthlyFixed)}</div>
         </div>
         <div class="summary-card">
-          <div class="label">~Half Fixed / Check</div>
-          <div class="value">${money(perCheckFixed)}</div>
-        </div>
-        <div class="summary-card">
-          <div class="label">Cushion Left</div>
-          <div class="value" style="color:var(--green)">${money(cushionLeft)}</div>
-        </div>
-        <div class="summary-card">
           <div class="label">Total Debt</div>
           <div class="value" style="color:var(--rose)">${money(totalDebt)}</div>
         </div>
+        <div class="summary-card">
+          <div class="label">Cushion in account</div>
+          <div class="value" style="color:var(--green)">${money(cushionNow)}</div>
+        </div>
+        <div class="summary-card">
+          <div class="label">Cushion Left</div>
+          <div class="value" style="color:var(--amber)">${money(cushionLeft)}</div>
+        </div>
         <div class="summary-card" style="grid-column:1/-1;">
-          <div class="label">House + Baby cushion</div>
+          <div class="label">House + Baby cushion (Emergency Fund account)</div>
           <div class="progress-wrap">
-            <div class="progress-header"><span>${money(primary?.current || 0)} of ${money(primary?.target || 0)}</span><span class="pct">${cushionPct}%</span></div>
+            <div class="progress-header"><span>${money(cushionNow)} of ${money(cushionTarget)}</span><span class="pct">${cushionPct}%</span></div>
             <div class="progress-bar"><div class="progress-fill ${cushionPct >= 100 ? '' : (cushionPct >= 50 ? 'sky' : 'amber')}" style="width:${cushionPct}%"></div></div>
           </div>
         </div>
         <div class="summary-card" style="grid-column:1/-1;">
-          <div class="label">Bills covered by account (next ~40 days)</div>
+          <div class="label">Bills covered by accounts (next ~40 days)</div>
           <div class="progress-wrap">
             <div class="progress-header"><span>${money(fund.available || 0)} vs ${money(obligTotal)} due</span><span class="pct">${coveredPct}%</span></div>
             <div class="progress-bar"><div class="progress-fill ${coveredPct >= 100 ? '' : (coveredPct >= 50 ? 'amber' : 'rose')}" style="width:${coveredPct}%"></div></div>
@@ -1368,11 +1509,17 @@
       let fields = '';
 
       if (key === 'everyday') {
+        const acctOpts = (state.accounts || []).map(a =>
+          `<option value="${a.id}" ${(item && item.accountTo === a.id) || (!item && a.id === 'acct-bills') ? 'selected' : ''}>${escapeHtml(a.name)}</option>`
+        ).join('');
         fields = `
-          <label>Name</label>
-          <input id="m-name" value="${item ? escapeHtml(item.name) : ''}" placeholder="e.g. Groceries, Gas, Dining" />
-          <label>Monthly amount ($)</label>
+          <label>Category</label>
+          <input id="m-name" value="${item ? escapeHtml(item.name) : ''}" placeholder="e.g. Groceries, Trent diesel" />
+          <label>Amount per paycheck ($)</label>
           <input id="m-amount" type="number" inputmode="decimal" step="0.01" min="0" value="${item ? item.amount : ''}" />
+          <label>Send to account</label>
+          <select id="m-account-to">${acctOpts}</select>
+          <p class="tip" style="margin-top:8px;">This is the between-check allowance (not a monthly total).</p>
         `;
       } else if (key === 'bills') {
         fields = `
@@ -1491,6 +1638,7 @@
 
       if (key === 'everyday') {
         obj.amount = Number(document.getElementById('m-amount').value) || 0;
+        obj.accountTo = document.getElementById('m-account-to')?.value || 'acct-bills';
       } else if (key === 'housing') {
         obj.amount = Number(document.getElementById('m-amount').value) || 0;
         const dd = document.getElementById('m-due-day')?.value;
@@ -1643,6 +1791,56 @@
 
     let lastPlan = null; // { amount, alloc: [{kind, id, label, amount, ...}] }
 
+    function onAllocSlider(idx, value) {
+      if (!lastPlan || !lastPlan.alloc[idx]) return;
+      const amount = lastPlan.amount;
+      let newVal = round2(Number(value) || 0);
+      if (newVal < 0) newVal = 0;
+      if (newVal > amount) newVal = amount;
+      const oldVal = lastPlan.alloc[idx].amount;
+      const delta = round2(newVal - oldVal);
+      lastPlan.alloc[idx].amount = newVal;
+
+      // Push difference into leftover lines (or create one)
+      let leftoverIdx = lastPlan.alloc.findIndex((a, i) => i !== idx && a.kind === 'leftover');
+      if (leftoverIdx < 0) {
+        lastPlan.alloc.push({
+          label: 'Leftover in checking', amount: 0, color: 'amber', note: 'adjusted',
+          kind: 'leftover', id: null
+        });
+        leftoverIdx = lastPlan.alloc.length - 1;
+        // New row may not be in DOM yet — full refresh of numbers still updates existing rows
+      }
+      lastPlan.alloc[leftoverIdx].amount = round2(Math.max(0, (Number(lastPlan.alloc[leftoverIdx].amount) || 0) - delta));
+
+      // If total drifts, fix leftover
+      let sumAmt = lastPlan.alloc.reduce((s, a) => s + (Number(a.amount) || 0), 0);
+      const drift = round2(amount - sumAmt);
+      if (Math.abs(drift) >= 0.01) {
+        lastPlan.alloc[leftoverIdx].amount = round2(Math.max(0, lastPlan.alloc[leftoverIdx].amount + drift));
+      }
+
+      // Sync all visible controls
+      lastPlan.alloc.forEach((a, i) => {
+        const amtEl = document.getElementById('alloc-amt-' + i);
+        const pctEl = document.getElementById('alloc-pct-' + i);
+        const barEl = document.getElementById('alloc-bar-' + i);
+        const numEl = document.getElementById('alloc-num-' + i);
+        const rangeEl = document.getElementById('alloc-range-' + i);
+        const pct = amount > 0 ? Math.min(100, Math.round((a.amount / amount) * 1000) / 10) : 0;
+        if (amtEl) amtEl.textContent = money(a.amount);
+        if (pctEl) pctEl.textContent = pct + '% of check';
+        if (barEl) barEl.style.width = pct + '%';
+        if (numEl && document.activeElement !== numEl) numEl.value = Number(a.amount).toFixed(2);
+        if (rangeEl) rangeEl.value = Math.round(a.amount);
+      });
+      const totalEl = document.getElementById('alloc-total');
+      const total = round2(lastPlan.alloc.reduce((s, a) => s + (Number(a.amount) || 0), 0));
+      if (totalEl) totalEl.textContent = money(total);
+      const msg = document.getElementById('alloc-math-msg');
+      if (msg) msg.textContent = Math.abs(total - amount) < 0.02 ? '✓ Adds up to the paycheck exactly' : 'Total should match deposit';
+    }
+
     function generatePlan() {
       const amount = Number(document.getElementById('paycheck-amount').value);
       if (!amount || amount <= 0) {
@@ -1659,7 +1857,8 @@
       let targetHousing = shares.shareHousing;
       let targetBills = shares.shareBills;
       let targetDebtMin = shares.shareDebtMin;
-      let targetEveryday = shares.shareEveryday;
+      // Everyday is per-paycheck allowance (full amounts each deposit), not monthly/2
+      const targetEveryday = sum(state.everyday, 'amount');
 
       const fund = fundingNeed(40);
       const shortfall = fund.shortfall;
@@ -1731,6 +1930,22 @@
       }
 
       if (state.phase === 'debt') {
+        // Allowance still funded each check
+        (state.everyday || []).forEach(e => {
+          const amt = Number(e.amount) || 0;
+          if (amt <= 0 || remaining < 0.01) return;
+          const acct = getAccountById(e.accountTo);
+          take(e.name, amt, 'purple', '→ ' + (acct ? acct.name : 'account'), 'everyday', e.id);
+        });
+        goalsToFund.forEach(g => {
+          const left = Math.max(0, (Number(g.target) || 0) - (Number(g.current) || 0));
+          const perCheck = round2((Number(g.monthlyContribute) || 0) / paysPerMonth);
+          take(g.name, Math.min(left, perCheck), 'purple', money(g.monthlyContribute) + '/mo', 'goal', g.id);
+        });
+        const aggressionPct = state.debtAggression != null ? state.debtAggression : 70;
+        const aggression = aggressionPct / 100;
+        const pool = remaining;
+        let debtBudget = round2(pool * aggression);
         const debtsSorted = [...state.debts]
           .filter(d => d.balance > 0)
           .sort((a, b) => {
@@ -1741,22 +1956,38 @@
             return (b.balance || 0) - (a.balance || 0);
           });
         for (const d of debtsSorted) {
-          if (remaining < 0.01) break;
-          take('Extra → ' + d.name, d.balance,
+          if (debtBudget < 0.01 || remaining < 0.01) break;
+          const pay = Math.min(debtBudget, remaining, Number(d.balance) || 0);
+          take('Extra → ' + d.name, pay,
             d.type === 'credit' ? 'rose' : 'amber',
-            d.type === 'credit' ? 'credit card priority' : 'other debt',
+            aggressionPct + '% aggression',
             'extra_debt', d.id);
+          debtBudget = round2(debtBudget - pay);
         }
-        goalsToFund.forEach(g => {
-          const left = Math.max(0, (Number(g.target) || 0) - (Number(g.current) || 0));
-          const perCheck = round2((Number(g.monthlyContribute) || 0) / paysPerMonth);
-          take(g.name, Math.min(left, perCheck), 'purple', money(g.monthlyContribute) + '/mo', 'goal', g.id);
+        // Whatever remains stays as buffer (includes the non-aggression share)
+        if (remaining > 0.005) {
+          take('Buffer kept this check', remaining, 'amber',
+            aggressionPct + '% aggression → ' + money(round2(pool * aggression)) + ' to debt max; rest kept',
+            'leftover', null);
+        }
+      } else {
+        // Fund each allowance line (per paycheck)
+        (state.everyday || []).forEach(e => {
+          const amt = Number(e.amount) || 0;
+          if (amt <= 0 || remaining < 0.01) return;
+          const acct = getAccountById(e.accountTo);
+          take(
+            e.name,
+            amt,
+            'purple',
+            '→ ' + (acct ? acct.name : 'account'),
+            'everyday',
+            e.id
+          );
         });
-      }
-
-      take('Everyday Spending', targetEveryday, 'purple', 'stays available for spending', 'everyday', null);
-      if (remaining > 0.005) {
-        take('Leftover in checking', remaining, 'amber', 'stays in bill-pay account', 'leftover', null);
+        if (remaining > 0.005) {
+          take('Leftover in checking', remaining, 'amber', 'stays in deposit account', 'leftover', null);
+        }
       }
 
       const totalAllocated = round2(alloc.reduce((s, l) => s + l.amount, 0));
@@ -1806,29 +2037,42 @@
         ${contextHtml}
         <div class="result-box ${mathOk ? '' : 'warn'}">
           <h3>${escapeHtml(payLabel)} — split of ${money(amount)}</h3>
-          ${alloc.map(l => {
+          <p style="font-size:0.78rem;color:var(--muted);margin-bottom:8px;">Type an exact amount or drag the slider. Total stays equal to the deposit; leftover absorbs the difference.</p>
+          <div id="alloc-sliders">
+          ${alloc.map((l, i) => {
             const pct = amount > 0 ? Math.min(100, Math.round((l.amount / amount) * 1000) / 10) : 0;
             const fill = l.color === 'rose' ? 'rose' : (l.color === 'amber' ? 'amber' : (l.color === 'purple' ? 'purple' : (l.color === 'sky' ? 'sky' : '')));
             return `
-            <div style="padding:8px 0;border-bottom:1px solid rgba(51,65,85,0.6);">
-              <div class="alloc-row" style="border:none;padding:0;">
+            <div class="alloc-slider-row" data-idx="${i}" style="padding:10px 0;border-bottom:1px solid rgba(51,65,85,0.6);">
+              <div class="alloc-row" style="border:none;padding:0;align-items:center;">
                 <div class="label">
                   <span class="badge ${l.color}">${l.note || ''}</span>
                   ${escapeHtml(l.label)}
                 </div>
-                <div class="amt">${money(l.amount)}</div>
+                <div style="display:flex;align-items:center;gap:6px;">
+                  <span style="color:var(--muted);font-size:0.85rem;">$</span>
+                  <input type="number" id="alloc-num-${i}" inputmode="decimal" step="0.01" min="0" max="${amount}"
+                    value="${Number(l.amount).toFixed(2)}"
+                    onchange="onAllocSlider(${i}, this.value)"
+                    onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}"
+                    style="width:100px;padding:8px 10px;font-size:0.95rem;font-weight:600;text-align:right;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:10px;" />
+                </div>
               </div>
+              <input type="range" id="alloc-range-${i}" min="0" max="${amount}" step="1" value="${Math.round(l.amount)}"
+                oninput="onAllocSlider(${i}, this.value)"
+                style="width:100%;margin-top:8px;accent-color:var(--accent);" />
               <div class="progress-wrap">
-                <div class="progress-header"><span>${pct}% of check</span><span class="pct">${pct}%</span></div>
-                <div class="progress-bar"><div class="progress-fill ${fill}" style="width:${pct}%"></div></div>
+                <div class="progress-header"><span id="alloc-pct-${i}">${pct}% of check</span><span class="pct" id="alloc-amt-${i}">${money(l.amount)}</span></div>
+                <div class="progress-bar"><div class="progress-fill ${fill}" id="alloc-bar-${i}" style="width:${pct}%"></div></div>
               </div>
             </div>`;
           }).join('')}
+          </div>
           <div class="total-line">
             <span>Total from this check</span>
-            <span>${money(totalAllocated)}</span>
+            <span id="alloc-total">${money(totalAllocated)}</span>
           </div>
-          ${!mathOk ? `<p class="tip warn" style="margin-top:8px;">Math check failed — please screenshot and report.</p>` : `<p style="font-size:0.75rem;color:var(--muted);margin-top:8px;">✓ Adds up to the paycheck exactly</p>`}
+          <p id="alloc-math-msg" style="font-size:0.75rem;color:var(--muted);margin-top:8px;">${mathOk ? '✓ Adds up to the paycheck exactly' : 'Adjust amounts so total matches deposit'}</p>
         </div>
         <div class="card">
           <h2>Apply to accounts</h2>
@@ -1898,9 +2142,10 @@
           return;
         }
         if (line.kind === 'everyday') {
-          const dest = routeForCategory('everyday').to;
+          const cat = (state.everyday || []).find(e => e.id === line.id);
+          const dest = (cat && cat.accountTo) || routeForCategory('everyday').to;
           transfer(depositId, dest, amt);
-          summary.push(money(amt) + ' → ' + (getAccountById(dest)?.name || 'Pocket'));
+          summary.push(money(amt) + ' ' + (line.label || '') + ' → ' + (getAccountById(dest)?.name || 'account'));
           return;
         }
         if (line.kind === 'leftover') {
@@ -1948,6 +2193,14 @@
         }
       });
 
+      // Monthly log: saved + debt paid this apply
+      let saved = 0, debtPaid = 0;
+      lastPlan.alloc.forEach(line => {
+        if (line.kind === 'goal') saved += Number(line.amount) || 0;
+        if (line.kind === 'debt_min' || line.kind === 'extra_debt') debtPaid += Number(line.amount) || 0;
+      });
+      appendMonthlyLogActivity({ saved, debtPaid, note: lastPlan.payLabel + ' applied' });
+
       save();
       lastPlan = null;
       const lines = (state.accounts || []).map(a =>
@@ -1963,6 +2216,136 @@
       `;
       updateQuickStats();
       renderAll();
+    }
+
+    // ========== MONTHLY LOG ==========
+    function currentMonthKey(d = new Date()) {
+      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+    }
+
+    function getOrCreateMonthLog(monthKey) {
+      if (!state.monthlyLogs) state.monthlyLogs = [];
+      let log = state.monthlyLogs.find(l => l.month === monthKey);
+      if (!log) {
+        log = { id: uid(), month: monthKey, saved: 0, debtPaid: 0, unexpected: 0, notes: [], events: [] };
+        state.monthlyLogs.push(log);
+      }
+      if (!log.notes) log.notes = [];
+      if (!log.events) log.events = [];
+      return log;
+    }
+
+    function appendMonthlyLogActivity({ saved = 0, debtPaid = 0, unexpected = 0, note = '' }) {
+      const log = getOrCreateMonthLog(currentMonthKey());
+      log.saved = round2((Number(log.saved) || 0) + saved);
+      log.debtPaid = round2((Number(log.debtPaid) || 0) + debtPaid);
+      log.unexpected = round2((Number(log.unexpected) || 0) + unexpected);
+      if (note) {
+        log.events.push({ date: new Date().toISOString().slice(0, 10), note, saved, debtPaid, unexpected });
+      }
+    }
+
+    function addUnexpectedCostEntry() {
+      const dateEl = document.getElementById('unexpected-date');
+      const amtEl = document.getElementById('unexpected-amt');
+      const noteEl = document.getElementById('unexpected-note');
+      const dateVal = (dateEl && dateEl.value) ? dateEl.value : new Date().toISOString().slice(0, 10);
+      const amt = Number(amtEl?.value) || 0;
+      if (amt <= 0) {
+        alert('Enter an amount');
+        return;
+      }
+      const note = (noteEl?.value || 'Unexpected cost').trim();
+      const monthKey = dateVal.slice(0, 7);
+      const log = getOrCreateMonthLog(monthKey);
+      log.unexpected = round2((Number(log.unexpected) || 0) + amt);
+      log.events.push({
+        id: uid(),
+        date: dateVal,
+        note,
+        saved: 0,
+        debtPaid: 0,
+        unexpected: amt
+      });
+      if (amtEl) amtEl.value = '';
+      if (noteEl) noteEl.value = '';
+      save();
+      renderUnexpectedRecent();
+      alert('Logged: ' + money(amt) + ' — ' + note);
+    }
+
+    function renderUnexpectedRecent() {
+      const el = document.getElementById('unexpected-recent');
+      if (!el) return;
+      const dateEl = document.getElementById('unexpected-date');
+      if (dateEl && !dateEl.value) dateEl.value = new Date().toISOString().slice(0, 10);
+
+      // Collect recent unexpected events across logs
+      const events = [];
+      (state.monthlyLogs || []).forEach(log => {
+        (log.events || []).forEach(e => {
+          if (e.unexpected > 0) events.push({ ...e, month: log.month });
+        });
+      });
+      events.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+      const recent = events.slice(0, 8);
+      if (!recent.length) {
+        el.innerHTML = '<p class="empty" style="padding:8px 0;">No unexpected costs logged yet this month.</p>';
+        return;
+      }
+      el.innerHTML = '<p class="section-label">Recent entries</p>' + recent.map(e => `
+        <div class="alloc-row">
+          <div class="label">${escapeHtml(e.date)} · ${escapeHtml(e.note || '')}</div>
+          <div class="amt" style="color:var(--amber)">${money(e.unexpected)}</div>
+        </div>
+      `).join('');
+    }
+
+    function renderMonthlyLog() {
+      const list = document.getElementById('log-list');
+      if (!list) return;
+      const logs = [...(state.monthlyLogs || [])].sort((a, b) => b.month.localeCompare(a.month));
+      if (!logs.length) {
+        list.innerHTML = '<div class="card"><p class="empty">No months logged yet. Apply a paycheck or log an unexpected cost on the Audit tab.</p></div>';
+        return;
+      }
+      list.innerHTML = logs.map(log => {
+        const [y, m] = log.month.split('-');
+        const title = new Date(Number(y), Number(m) - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        const events = (log.events || []).slice().reverse().slice(0, 12);
+        return `
+          <div class="card">
+            <h2>${escapeHtml(title)}</h2>
+            <div class="summary-grid">
+              <div class="summary-card">
+                <div class="label">Saved</div>
+                <div class="value" style="color:var(--green)">${money(log.saved)}</div>
+              </div>
+              <div class="summary-card">
+                <div class="label">Toward debt</div>
+                <div class="value" style="color:var(--rose)">${money(log.debtPaid)}</div>
+              </div>
+              <div class="summary-card" style="grid-column:1/-1;">
+                <div class="label">Unexpected costs</div>
+                <div class="value" style="color:var(--amber)">${money(log.unexpected)}</div>
+              </div>
+            </div>
+            ${events.length ? `
+              <p class="section-label">Activity</p>
+              ${events.map(e => `
+                <div class="alloc-row">
+                  <div class="label">${escapeHtml(e.date)} · ${escapeHtml(e.note || '')}</div>
+                  <div class="amt" style="font-size:0.8rem;">
+                    ${e.saved ? '<span class="delta-up">+' + money(e.saved) + ' saved</span> ' : ''}
+                    ${e.debtPaid ? '<span class="delta-down">' + money(e.debtPaid) + ' debt</span> ' : ''}
+                    ${e.unexpected ? '<span style="color:var(--amber)">' + money(e.unexpected) + ' surprise</span>' : ''}
+                  </div>
+                </div>
+              `).join('')}
+            ` : ''}
+          </div>
+        `;
+      }).join('');
     }
 
     function round2(n) {
