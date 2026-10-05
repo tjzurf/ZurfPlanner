@@ -567,13 +567,13 @@
       <div class="card">
         <h2><span class="dot" style="background:var(--purple)"></span> Weekly Check-in</h2>
         <p style="font-size:0.8rem;color:var(--muted);margin-bottom:12px;">
-          Log balances any day (e.g. every Friday). Compare to last week, record unexpected costs, and see what to adjust.
+          Update account and debt balances (e.g. every Friday). Variable bills stay on Budget — change those monthly when the bill arrives.
         </p>
         <label>Audit date</label>
         <input type="date" id="audit-date" />
         <div id="audit-form-fields"></div>
         <label>Notes (optional)</label>
-        <textarea id="audit-notes" placeholder="e.g. Paid extra on Chase, baby shower gifts this week…"></textarea>
+        <textarea id="audit-notes" placeholder="e.g. Paid extra on Chase…"></textarea>
         <button class="btn" onclick="runAudit()">Run Weekly Audit</button>
       </div>
 
@@ -604,14 +604,14 @@
       <div id="audit-result" class="hidden"></div>
 
       <div class="card">
-        <h2><span class="dot" style="background:var(--accent)"></span> Share Weekly Report</h2>
+        <h2><span class="dot" style="background:var(--accent)"></span> Weekly report</h2>
         <p style="font-size:0.8rem;color:var(--muted);margin-bottom:10px;">
-          One-tap summary of all balances and how you’re doing — ready to text or email.
+          One report to send — days to payday, pockets, groceries left, balances, and debt.
         </p>
-        <button class="btn" onclick="generateShareReport()">Generate Report for Wife</button>
+        <button class="btn" onclick="generateShareReport()">Generate report</button>
         <button class="btn secondary" id="btn-copy-report" style="display:none;margin-top:8px;" onclick="copyShareReport()">Copy to Clipboard</button>
         <button class="btn secondary" id="btn-share-report" style="display:none;margin-top:8px;" onclick="nativeShareReport()">Share…</button>
-        <pre id="share-report-preview" class="hidden" style="margin-top:12px;padding:12px;background:var(--bg);border-radius:10px;font-size:0.78rem;white-space:pre-wrap;word-break:break-word;max-height:280px;overflow-y:auto;border:1px solid var(--border);color:var(--text);"></pre>
+        <pre id="share-report-preview" class="hidden" style="margin-top:12px;padding:12px;background:var(--bg);border-radius:10px;font-size:0.78rem;white-space:pre-wrap;word-break:break-word;max-height:320px;overflow-y:auto;border:1px solid var(--border);color:var(--text);"></pre>
       </div>
 
       <div class="card">
@@ -3018,60 +3018,29 @@
         dateInput.value = new Date().toISOString().slice(0, 10);
       }
 
-      const primary = state.goals.find(g => g.isPrimary) || state.goals[0];
       let html = '';
 
-      html += `<div class="section-label">Cash Cushion / Goals</div>`;
-      if (primary) {
-        html += `
-          <label>${escapeHtml(primary.name)} — current balance ($)</label>
-          <input type="number" id="audit-cushion" inputmode="decimal" step="0.01" min="0" value="${primary.current || 0}" />
-        `;
+      // Bank accounts only (goals sync from linked accounts)
+      html += `<div class="section-label">Bank account balances</div>`;
+      if (!(state.accounts || []).length) {
+        html += `<p class="empty" style="padding:8px 0;">No accounts yet — add them on Goals.</p>`;
       } else {
-        html += `<p class="empty" style="padding:8px 0;">Add a primary goal first on the Goals tab.</p>`;
+        state.accounts.forEach(a => {
+          html += `
+            <label>${escapeHtml(a.name)} ($)</label>
+            <input type="number" class="audit-account" data-id="${a.id}" inputmode="decimal" step="0.01" min="0" value="${a.balance || 0}" />
+          `;
+        });
       }
 
-      // Other goals
-      const otherGoals = (state.goals || []).filter(g => !g.isPrimary);
-      otherGoals.forEach(g => {
-        html += `
-          <label>${escapeHtml(g.name)} — current ($)</label>
-          <input type="number" class="audit-goal" data-id="${g.id}" inputmode="decimal" step="0.01" min="0" value="${g.current || 0}" />
-        `;
-      });
-
-      html += `<div class="section-label">Debt Balances</div>`;
+      html += `<div class="section-label">Debt balances</div>`;
       if (!state.debts.length) {
         html += `<p class="empty" style="padding:8px 0;">No debts added yet.</p>`;
       } else {
         state.debts.forEach(d => {
           html += `
-            <label>${escapeHtml(d.name)} ${d.type === 'credit' ? '(CC)' : ''} — balance ($)</label>
+            <label>${escapeHtml(d.name)} ${d.type === 'credit' ? '(CC)' : ''} ($)</label>
             <input type="number" class="audit-debt" data-id="${d.id}" inputmode="decimal" step="0.01" min="0" value="${d.balance || 0}" />
-          `;
-        });
-      }
-
-      // Variable bills (utilities etc.) — update this month's amount
-      const varBills = (state.bills || []).filter(b => b.variable);
-      if (varBills.length) {
-        html += `<div class="section-label">Variable Bills (this month’s amount)</div>`;
-        html += `<p style="font-size:0.75rem;color:var(--muted);margin-bottom:6px;">Gas, electric, water, etc. — update when the bill arrives.</p>`;
-        varBills.forEach(b => {
-          html += `
-            <label>${escapeHtml(b.name)} ($)</label>
-            <input type="number" class="audit-bill" data-id="${b.id}" inputmode="decimal" step="0.01" min="0" value="${b.amount || 0}" />
-          `;
-        });
-      }
-
-      // Bank accounts
-      if ((state.accounts || []).length) {
-        html += `<div class="section-label">Bank Account Balances</div>`;
-        state.accounts.forEach(a => {
-          html += `
-            <label>${escapeHtml(a.name)} ${a.isBillPay ? '(bill-pay)' : ''} ($)</label>
-            <input type="number" class="audit-account" data-id="${a.id}" inputmode="decimal" step="0.01" min="0" value="${a.balance || 0}" />
           `;
         });
       }
@@ -3087,10 +3056,8 @@
       }
 
       const primary = state.goals.find(g => g.isPrimary) || state.goals[0];
-      const cushionInput = document.getElementById('audit-cushion');
-      const newCushion = cushionInput ? (Number(cushionInput.value) || 0) : (primary ? primary.current : 0);
 
-      // Collect debt balances
+      // Debt balances
       const debtSnap = [];
       document.querySelectorAll('.audit-debt').forEach(inp => {
         const id = inp.dataset.id;
@@ -3101,25 +3068,7 @@
         }
       });
 
-      // Other goals
-      const goalSnap = [];
-      document.querySelectorAll('.audit-goal').forEach(inp => {
-        const id = inp.dataset.id;
-        const cur = Number(inp.value) || 0;
-        const g = state.goals.find(x => x.id === id);
-        if (g) goalSnap.push({ id, name: g.name, current: cur, prevCurrent: g.current, target: g.target });
-      });
-
-      // Variable bills
-      const billSnap = [];
-      document.querySelectorAll('.audit-bill').forEach(inp => {
-        const id = inp.dataset.id;
-        const amt = Number(inp.value) || 0;
-        const b = state.bills.find(x => x.id === id);
-        if (b) billSnap.push({ id, name: b.name, amount: amt, prevAmount: b.amount });
-      });
-
-      // Accounts
+      // Bank accounts only
       const acctSnap = [];
       document.querySelectorAll('.audit-account').forEach(inp => {
         const id = inp.dataset.id;
@@ -3128,57 +3077,47 @@
         if (a) acctSnap.push({ id, name: a.name, balance: bal, prevBalance: a.balance });
       });
 
-      const notes = (document.getElementById('audit-notes').value || '').trim();
+      // Apply account balances first
+      acctSnap.forEach(a => {
+        const live = (state.accounts || []).find(x => x.id === a.id);
+        if (live) live.balance = a.balance;
+      });
+      debtSnap.forEach(d => {
+        const live = state.debts.find(x => x.id === d.id);
+        if (live) live.balance = d.balance;
+      });
+      // Goals follow linked accounts
+      syncCushionGoalFromAccount();
+      const newCushion = cushionActualBalance();
 
-      // Previous audit for comparison
+      const notes = (document.getElementById('audit-notes').value || '').trim();
       const prev = (state.audits || []).length ? state.audits[state.audits.length - 1] : null;
 
-      // Build snapshot
       const snapshot = {
         id: uid(),
         date: dateVal,
         notes,
         cushion: newCushion,
-        cushionPrev: primary ? primary.current : 0,
+        cushionPrev: prev ? prev.cushion : newCushion,
         cushionTarget: primary ? primary.target : 0,
         debts: debtSnap.map(d => ({ id: d.id, name: d.name, type: d.type, balance: d.balance })),
-        goals: goalSnap,
-        bills: billSnap.map(b => ({ id: b.id, name: b.name, amount: b.amount })),
+        goals: (state.goals || []).map(g => ({ id: g.id, name: g.name, current: g.current, target: g.target })),
+        bills: [],
         accounts: acctSnap.map(a => ({ id: a.id, name: a.name, balance: a.balance })),
         phase: state.phase,
         totalDebt: debtSnap.reduce((s, d) => s + d.balance, 0),
         totalDebtPrev: debtSnap.reduce((s, d) => s + (d.prevBalance || 0), 0)
       };
 
-      // Update live state balances
-      if (primary) {
-        primary.current = newCushion;
-      }
-      debtSnap.forEach(d => {
-        const live = state.debts.find(x => x.id === d.id);
-        if (live) live.balance = d.balance;
-      });
-      goalSnap.forEach(g => {
-        const live = state.goals.find(x => x.id === g.id);
-        if (live) live.current = g.current;
-      });
-      billSnap.forEach(b => {
-        const live = state.bills.find(x => x.id === b.id);
-        if (live) live.amount = b.amount;
-      });
-      acctSnap.forEach(a => {
-        const live = (state.accounts || []).find(x => x.id === a.id);
-        if (live) live.balance = a.balance;
-      });
-
       if (!state.audits) state.audits = [];
       state.audits.push(snapshot);
-      // keep last 52 weeks max
       if (state.audits.length > 52) state.audits = state.audits.slice(-52);
 
       save();
       document.getElementById('audit-notes').value = '';
       showAuditReport(snapshot, prev);
+      // Also refresh the combined weekly report
+      generateShareReport();
     }
 
     function showAuditReport(snap, prev) {
@@ -3365,7 +3304,34 @@
     // ========== SHAREABLE WEEKLY REPORT ==========
     let lastShareText = '';
 
+    function nextPaydayInfo(from = new Date()) {
+      // Pay days: 10th (main) and 25th (advance)
+      const y = from.getFullYear();
+      const m = from.getMonth();
+      const d = from.getDate();
+      const candidates = [];
+      // this month
+      [10, 25].forEach(day => {
+        const dt = new Date(y, m, day);
+        if (dt >= new Date(y, m, d)) candidates.push(dt);
+      });
+      // next month
+      [10, 25].forEach(day => {
+        candidates.push(new Date(y, m + 1, day));
+      });
+      candidates.sort((a, b) => a - b);
+      const next = candidates[0];
+      const start = new Date(y, m, d);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(next);
+      end.setHours(0, 0, 0, 0);
+      const days = Math.max(0, Math.round((end - start) / 86400000));
+      const which = next.getDate() === 25 ? 'Advance (25th)' : 'Main paycheck (10th)';
+      return { date: next, days, which, label: next.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) };
+    }
+
     function generateShareReport() {
+      syncCushionGoalFromAccount();
       const primary = state.goals.find(g => g.isPrimary) || state.goals[0];
       const audits = state.audits || [];
       const latest = audits.length ? audits[audits.length - 1] : null;
@@ -3374,7 +3340,7 @@
       const today = new Date().toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
       const reportDate = latest ? latest.date : today;
 
-      const cushion = primary ? primary.current : 0;
+      const cushion = cushionActualBalance();
       const cushionTarget = primary ? primary.target : 0;
       const cushionLeft = Math.max(0, cushionTarget - cushion);
       const cushionPct = cushionTarget > 0 ? Math.round((cushion / cushionTarget) * 100) : 0;
@@ -3391,32 +3357,45 @@
 
       const totalDebt = sum(state.debts, 'balance');
       const totalMin = sum(state.debts, 'minPayment');
-      const monthlyHousing = sum(state.housing, 'amount');
-      const monthlyBills = sum(state.bills, 'amount');
-      const monthlyFixed = monthlyHousing + monthlyBills + totalMin;
+      const payday = nextPaydayInfo();
+      const trent = getAccountById('acct-trent');
+      const bri = getAccountById('acct-bri');
+      const bills = getAccountById('acct-bills');
+      const grocery = (state.everyday || []).find(e => /groc/i.test(e.name || ''));
+      const groceryBudget = grocery ? (Number(grocery.amount) || 0) : 0;
+      // "Left for groceries" ≈ Bills balance (where grocery money is held), capped contextually
+      const groceryLeft = bills ? (Number(bills.balance) || 0) : 0;
 
-      // Build plain-text report (easy to paste into Messages / email)
       let lines = [];
       lines.push('📊 WEEKLY MONEY REPORT');
       lines.push('Date: ' + reportDate);
-      lines.push('Mode: ' + (state.phase === 'cushion' ? 'Building House + Baby Cushion' : 'Attacking Debt (CCs first)'));
+      lines.push('Mode: ' + (state.phase === 'cushion' ? 'Building Savings' : 'Attacking Debt (CCs first)'));
+      lines.push('');
+      lines.push('—— PAYDAY ——');
+      lines.push('Next deposit: ' + payday.which + ' · ' + payday.label);
+      lines.push('Days until payday: ' + payday.days);
+      lines.push('');
+      lines.push('—— SPENDING LEFT ——');
+      lines.push("Trent's Pocket:  " + money(trent ? trent.balance : 0));
+      lines.push("Bri's Pocket:    " + money(bri ? bri.balance : 0));
+      lines.push('Groceries budget/check: ' + money(groceryBudget));
+      lines.push('Bills account (groceries + bills): ' + money(groceryLeft));
       lines.push('');
       lines.push('—— HOW WE’RE DOING ——');
 
-      // Status sentence
       if (state.phase === 'cushion') {
         if (cushionLeft <= 0) {
-          lines.push('✅ Cushion goal is met! Ready to switch to debt payoff when we want.');
+          lines.push('✅ Savings goal is met! Ready to switch to debt payoff when we want.');
         } else if (cushionDelta != null && cushionDelta > 0) {
-          lines.push('✅ Cushion is growing — up ' + money(cushionDelta) + ' since last check-in.');
+          lines.push('✅ Savings growing — up ' + money(cushionDelta) + ' since last check-in.');
         } else if (cushionDelta != null && cushionDelta < -1) {
-          lines.push('⚠️ Cushion dropped ' + money(Math.abs(cushionDelta)) + ' since last check-in. Worth a look.');
+          lines.push('⚠️ Savings dropped ' + money(Math.abs(cushionDelta)) + ' since last check-in.');
         } else {
-          lines.push('➡️ Still building the cushion. ' + money(cushionLeft) + ' to go.');
+          lines.push('➡️ Still building savings. ' + money(cushionLeft) + ' to go.');
         }
       } else {
         if (debtDelta != null && debtDelta < -1) {
-          lines.push('✅ Total debt down ' + money(Math.abs(debtDelta)) + ' since last check-in. Great progress!');
+          lines.push('✅ Total debt down ' + money(Math.abs(debtDelta)) + ' since last check-in.');
         } else if (debtDelta != null && debtDelta > 1) {
           lines.push('⚠️ Total debt up ' + money(debtDelta) + ' since last check-in.');
         } else {
@@ -3425,7 +3404,7 @@
       }
 
       lines.push('');
-      lines.push('—— CASH CUSHION (House + Baby) ——');
+      lines.push('—— SAVINGS (Misc Money) ——');
       lines.push('Saved:     ' + money(cushion));
       lines.push('Target:    ' + money(cushionTarget));
       lines.push('Left:      ' + money(cushionLeft));
@@ -3507,7 +3486,7 @@
 
       if (state.everyday && state.everyday.length) {
         lines.push('');
-        lines.push('—— EVERYDAY BUDGET (monthly targets) ——');
+        lines.push('—— BETWEEN-CHECK ALLOWANCE ——');
         state.everyday.forEach(e => {
           lines.push(e.name + ': ' + money(e.amount));
         });
