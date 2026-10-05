@@ -2427,6 +2427,51 @@
 
     let lastPlan = null; // { amount, alloc: [{kind, id, label, amount, ...}] }
 
+    function buildApplyMovesHtml() {
+      if (!lastPlan || !lastPlan.alloc) return '<p class="empty">Generate a plan first</p>';
+      const r = state.routing || DEFAULT.routing;
+      const depositId = r.deposit || 'acct-bills';
+      const moveMap = {};
+      lastPlan.alloc.forEach(line => {
+        const amt = Number(line.amount) || 0;
+        if (amt <= 0.005) return;
+        let destId = depositId;
+        if (line.kind === 'housing') destId = routeForCategory('housing').to;
+        else if (line.kind === 'bills') destId = routeForCategory('bills').to;
+        else if (line.kind === 'everyday') {
+          const cat = (state.everyday || []).find(e => e.id === line.id);
+          destId = (cat && cat.accountTo) || routeForCategory('everyday').to;
+        } else if (line.kind === 'leftover') destId = routeForCategory('leftover').to;
+        else if (line.kind === 'goal') {
+          const g = (state.goals || []).find(x => x.id === line.id);
+          destId = (g && g.accountId) || routeForCategory('goals').to;
+        } else if (line.kind === 'debt_min' || line.kind === 'extra_debt') destId = 'acct-bills';
+        if (!destId) destId = depositId;
+        if (!moveMap[destId]) moveMap[destId] = { amt: 0, details: [] };
+        moveMap[destId].amt = round2(moveMap[destId].amt + amt);
+        if (line.label) moveMap[destId].details.push(line.label + ' ' + money(amt));
+      });
+      const keys = Object.keys(moveMap);
+      if (!keys.length) return '<p class="empty">Nothing to move</p>';
+      return keys.map(id => {
+        const acct = getAccountById(id);
+        const name = acct ? acct.name : id;
+        const m = moveMap[id];
+        const detail = m.details.length
+          ? `<div style="font-size:0.75rem;color:var(--muted);margin-top:2px;">${escapeHtml(m.details.join(' · '))}</div>`
+          : '';
+        return `<div class="alloc-row" style="align-items:flex-start;">
+          <div class="label">Move to <strong style="color:var(--text)">${escapeHtml(name)}</strong>${detail}</div>
+          <div class="amt">${money(m.amt)}</div>
+        </div>`;
+      }).join('');
+    }
+
+    function refreshApplyMovesList() {
+      const el = document.getElementById('apply-moves-list');
+      if (el) el.innerHTML = buildApplyMovesHtml();
+    }
+
     function onAllocSlider(idx, value) {
       if (!lastPlan || !lastPlan.alloc[idx]) return;
       const amount = lastPlan.amount;
@@ -2475,6 +2520,7 @@
       if (totalEl) totalEl.textContent = money(total);
       const msg = document.getElementById('alloc-math-msg');
       if (msg) msg.textContent = Math.abs(total - amount) < 0.02 ? '✓ Adds up to the paycheck exactly' : 'Total should match deposit';
+      refreshApplyMovesList();
     }
 
     function generatePlan() {
@@ -2632,45 +2678,7 @@
 
       lastPlan = { amount, payType, payLabel, alloc: alloc.map(a => ({ ...a })), fundAvailable: fund.available };
 
-      // Context (NOT part of the paycheck total)
-      let contextHtml = '';
-      if ((state.accounts || []).length || fund.oblig.total > 0) {
-        const topDue = fund.uncovered.slice(0, 6).map(u =>
-          `<div class="alloc-row"><div class="label">${escapeHtml(u.name)}${u.due ? ' · ' + formatShortDate(u.due) : ''}</div><div class="amt">${money(u.short)} needed</div></div>`
-        ).join('');
-        contextHtml = `
-          <div class="card">
-            <h2>Cash-flow (next ~40 days)</h2>
-            <div class="alloc-row">
-              <div class="label">Bill-pay account balance</div>
-              <div class="amt">${money(fund.available)}</div>
-            </div>
-            <div class="alloc-row">
-              <div class="label">Obligations due soon (housing, bills, debt mins)</div>
-              <div class="amt">${money(fund.oblig.total)}</div>
-            </div>
-            <div class="alloc-row">
-              <div class="label">${shortfall > 0 ? 'Still need from paychecks' : 'Covered by account balance'}</div>
-              <div class="amt" style="color:${shortfall > 0 ? 'var(--amber)' : 'var(--green)'}">${money(shortfall)}</div>
-            </div>
-            ${(() => {
-              const cov = fund.oblig.total > 0 ? Math.min(100, Math.round((Math.min(fund.available, fund.oblig.total) / fund.oblig.total) * 1000) / 10) : 100;
-              return `<div class="progress-wrap">
-                <div class="progress-header"><span>Account covers due items</span><span class="pct">${cov}%</span></div>
-                <div class="progress-bar"><div class="progress-fill ${cov >= 100 ? '' : (cov >= 50 ? 'amber' : 'rose')}" style="width:${cov}%"></div></div>
-              </div>`;
-            })()}
-            ${topDue ? `<p class="section-label" style="margin-top:10px;">Uncovered (fund these first)</p>${topDue}` : ''}
-            ${shortfall > amount ? `<p class="tip bad" style="margin-top:10px;">Need ${money(shortfall)} but this check is only ${money(amount)}. Plan uses the full check on due items first; update account balance after deposit and run again if needed.</p>` : ''}
-            ${!(state.accounts || []).length ? `<p class="tip warn" style="margin-top:10px;">Add a bill-pay bank account (Goals tab) with the real balance for accurate mortgage coverage.</p>` : ''}
-          </div>
-        `;
-      }
-
-      const primary = state.goals.find(g => g.isPrimary) || state.goals[0];
-      const cushionLine = alloc.find(l => primary && l.label === primary.name);
       let html = `
-        ${contextHtml}
         <div class="result-box ${mathOk ? '' : 'warn'}">
           <h3>${escapeHtml(payLabel)} — split of ${money(amount)}</h3>
           <p style="font-size:0.78rem;color:var(--muted);margin-bottom:8px;">Type an exact amount or drag the slider. Total stays equal to the deposit; leftover absorbs the difference.</p>
@@ -2713,14 +2721,12 @@
         <div class="card">
           <h2>Apply to accounts</h2>
           <p style="font-size:0.8rem;color:var(--muted);margin-bottom:8px;">
-            After the money hits your real bank, tap below. The app stages the deposit into Bills / Rent / Pockets / Savings.
-            It does <strong>not</strong> mark bills or debts paid — tap ✅ on each when the payment actually goes out.
+            After the money hits your real bank, move these amounts. Updates live when you adjust sliders.
+            Does <strong>not</strong> mark bills paid — tap ✅ when payments go out.
           </p>
-          <ol style="padding-left:18px;font-size:0.85rem;color:var(--muted);line-height:1.55;margin-bottom:10px;">
-            ${alloc.map(l => `<li><strong style="color:var(--text)">${money(l.amount)}</strong> → ${escapeHtml(l.label)}</li>`).join('')}
-          </ol>
-          <button class="btn" onclick="applyPlan()">Apply plan &amp; update balances</button>
-          <p class="tip" style="margin-top:10px;">Only apply once per deposit. Requires a bill-pay account on the Goals tab.</p>
+          <div id="apply-moves-list">${buildApplyMovesHtml()}</div>
+          <button class="btn" style="margin-top:12px" onclick="applyPlan()">Apply plan &amp; update balances</button>
+          <p class="tip" style="margin-top:10px;">Only apply once per deposit.</p>
         </div>
       `;
 
@@ -2972,9 +2978,13 @@
         const [y, m] = log.month.split('-');
         const title = new Date(Number(y), Number(m) - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
         const events = (log.events || []).slice().reverse().slice(0, 12);
+        const monthKey = log.month;
         return `
           <div class="card">
-            <h2>${escapeHtml(title)}</h2>
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:4px;">
+              <h2 style="margin:0;">${escapeHtml(title)}</h2>
+              <button class="icon-btn" title="Delete this month’s log" onclick="deleteMonthlyLog('${monthKey}')">🗑️</button>
+            </div>
             <div class="summary-grid">
               <div class="summary-card">
                 <div class="label">Saved</div>
@@ -3005,6 +3015,18 @@
           </div>
         `;
       }).join('');
+    }
+
+    function deleteMonthlyLog(monthKey) {
+      if (!monthKey || !state.monthlyLogs) return;
+      const log = state.monthlyLogs.find(l => l.month === monthKey);
+      if (!log) return;
+      const [y, m] = monthKey.split('-');
+      const title = new Date(Number(y), Number(m) - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      if (!confirm('Delete the log for ' + title + '? This cannot be undone.')) return;
+      state.monthlyLogs = state.monthlyLogs.filter(l => l.month !== monthKey);
+      save();
+      renderMonthlyLog();
     }
 
     function round2(n) {
@@ -3355,15 +3377,17 @@
         debtDelta = latest.totalDebt - (latest.totalDebtPrev || latest.totalDebt);
       }
 
-      const totalDebt = sum(state.debts, 'balance');
-      const totalMin = sum(state.debts, 'minPayment');
+      const totalDebt = sum(state.debts || [], 'balance');
+      const totalMin = sum(state.debts || [], 'minPayment');
+      const monthlyHousing = sum(state.housing || [], 'amount');
+      const monthlyBills = sum(state.bills || [], 'amount');
+      const monthlyFixed = monthlyHousing + monthlyBills + totalMin;
       const payday = nextPaydayInfo();
       const trent = getAccountById('acct-trent');
       const bri = getAccountById('acct-bri');
       const bills = getAccountById('acct-bills');
       const grocery = (state.everyday || []).find(e => /groc/i.test(e.name || ''));
       const groceryBudget = grocery ? (Number(grocery.amount) || 0) : 0;
-      // "Left for groceries" ≈ Bills balance (where grocery money is held), capped contextually
       const groceryLeft = bills ? (Number(bills.balance) || 0) : 0;
 
       let lines = [];
@@ -3438,7 +3462,7 @@
         sortedDebts.forEach(d => {
           const tag = d.type === 'credit' ? ' [CC]' : '';
           let change = '';
-          if (latest && prev) {
+          if (latest && prev && prev.debts) {
             const pd = prev.debts.find(x => x.id === d.id);
             if (pd) {
               const ch = d.balance - pd.balance;
@@ -3518,18 +3542,18 @@
       lastShareText = lines.join('\n');
 
       const preview = document.getElementById('share-report-preview');
-      preview.textContent = lastShareText;
-      preview.classList.remove('hidden');
-
-      document.getElementById('btn-copy-report').style.display = 'block';
-      const shareBtn = document.getElementById('btn-share-report');
-      if (navigator.share) {
-        shareBtn.style.display = 'block';
-      } else {
-        shareBtn.style.display = 'none';
+      if (preview) {
+        preview.textContent = lastShareText;
+        preview.classList.remove('hidden');
+        preview.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       }
 
-      preview.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      const copyBtn = document.getElementById('btn-copy-report');
+      if (copyBtn) copyBtn.style.display = 'block';
+      const shareBtn = document.getElementById('btn-share-report');
+      if (shareBtn) {
+        shareBtn.style.display = (typeof navigator !== 'undefined' && navigator.share) ? 'block' : 'none';
+      }
     }
 
     async function copyShareReport() {
