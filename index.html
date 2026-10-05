@@ -86,6 +86,33 @@
       border-color: var(--accent);
     }
     input[type="number"] { font-variant-numeric: tabular-nums; }
+    input[type="checkbox"] {
+      -webkit-appearance: checkbox;
+      appearance: auto;
+      width: 22px !important;
+      height: 22px;
+      min-width: 22px;
+      padding: 0;
+      margin: 0;
+      border-radius: 4px;
+      accent-color: var(--accent);
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .check-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 12px;
+      padding: 12px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      color: var(--text);
+    }
+    .check-row input { margin: 0; }
     textarea { min-height: 72px; resize: vertical; }
     .row { display: flex; gap: 10px; }
     .row > * { flex: 1; }
@@ -387,6 +414,9 @@
       <button data-tab="log" onclick="switchTab('log')">
         <span class="icon">📓</span> Log
       </button>
+      <button data-tab="pay" onclick="switchTab('pay')">
+        <span class="icon">🧮</span> Pay
+      </button>
       <button data-tab="settings" onclick="switchTab('settings')">
         <span class="icon">⚙️</span> More
       </button>
@@ -455,6 +485,83 @@
       <div id="log-list"></div>
     </div>
 
+    <!-- ========== PAY CALC TAB ========== -->
+    <div id="tab-pay" class="hidden">
+      <div class="card">
+        <h2><span class="dot" style="background:var(--accent)"></span> Firefighter paycheck (CCC / 56-hr)</h2>
+        <p style="font-size:0.8rem;color:var(--muted);margin-bottom:10px;">
+          Tuned from your Contra Costa County Fire stub. OT &amp; holiday pay at <strong>1.5×</strong>. Federal holidays = <strong>12 OT hours each</strong>. Defaults match Aug 2026 rates/deductions.
+        </p>
+        <label>Which check?</label>
+        <select id="pay-which">
+          <option value="main">Main (10th) — may include advance payback</option>
+          <option value="advance">Advance (25th) — flat $3,000</option>
+        </select>
+        <div class="section-label">Earnings</div>
+        <label>Hourly rate ($)</label>
+        <input type="number" id="pay-rate" inputmode="decimal" step="0.01" min="0" value="42.56" />
+        <p class="tip">From your stub OT line (~$6,528 ÷ 102.25 hrs ÷ 1.5).</p>
+        <label>Regular / scheduled pay this period ($)</label>
+        <input type="number" id="pay-regular" inputmode="decimal" step="0.01" min="0" value="10328.74" />
+        <label>OT hours @ 1.5× (not including holidays)</label>
+        <input type="number" id="pay-ot-hours" inputmode="decimal" step="0.25" min="0" value="0" />
+        <label>Federal holidays in period</label>
+        <input type="number" id="pay-holidays" inputmode="numeric" min="0" max="10" value="0" />
+        <p class="tip">Each holiday adds 12 hours @ 1.5× (holiday pay).</p>
+        <label>FLSA scheduled / additional ($)</label>
+        <input type="number" id="pay-flsa" inputmode="decimal" step="0.01" min="0" value="212.77" />
+        <label>Uniform allowance ($)</label>
+        <input type="number" id="pay-uniform" inputmode="decimal" step="0.01" min="0" value="54.50" />
+        <label>Other earnings ($)</label>
+        <input type="number" id="pay-other-earn" inputmode="decimal" step="0.01" min="0" value="0" />
+
+        <div class="section-label">Before-tax deductions</div>
+        <label>Medical (PERS Kaiser) ($)</label>
+        <input type="number" id="pay-med" inputmode="decimal" step="0.01" min="0" value="640.17" />
+        <label>Vision (VSP) ($)</label>
+        <input type="number" id="pay-vision" inputmode="decimal" step="0.01" min="0" value="17.10" />
+        <label>Dental ($)</label>
+        <input type="number" id="pay-dental" inputmode="decimal" step="0.01" min="0" value="11.49" />
+        <label>Retirement / PERS ($)</label>
+        <input type="number" id="pay-retirement" inputmode="decimal" step="0.01" min="0" value="1691.85" />
+        <label>Other pre-tax ($)</label>
+        <input type="number" id="pay-pretax-other" inputmode="decimal" step="0.01" min="0" value="0" />
+
+        <div class="section-label">After-tax deductions</div>
+        <label class="check-row" for="pay-advance-payback">
+          <input type="checkbox" id="pay-advance-payback" checked />
+          <span>Advance payback $3,000 (on the 10th check)</span>
+        </label>
+        <label>Union dues ($)</label>
+        <input type="number" id="pay-union" inputmode="decimal" step="0.01" min="0" value="177.20" />
+        <label>Roth / after-tax DC ($)</label>
+        <input type="number" id="pay-roth" inputmode="decimal" step="0.01" min="0" value="200.00" />
+        <label>AD&amp;D / life / Hlth &amp; Welfare ($)</label>
+        <input type="number" id="pay-other-post" inputmode="decimal" step="0.01" min="0" value="47.08" />
+
+        <div class="section-label">Taxes (from your stub)</div>
+        <label class="check-row" for="pay-fed-exempt">
+          <input type="checkbox" id="pay-fed-exempt" />
+          <span>Federal withholding exempt</span>
+        </label>
+        <label class="check-row" for="pay-ca-exempt">
+          <input type="checkbox" id="pay-ca-exempt" />
+          <span>California state withholding exempt</span>
+        </label>
+        <label>Federal withholding %</label>
+        <input type="number" id="pay-fed-pct" inputmode="decimal" step="0.1" min="0" max="50" value="12.0" />
+        <label>CA state withholding %</label>
+        <input type="number" id="pay-state-pct" inputmode="decimal" step="0.1" min="0" max="20" value="5.5" />
+        <label>Medicare EE % (Fed MED/EE)</label>
+        <input type="number" id="pay-medicare-pct" inputmode="decimal" step="0.01" min="0" max="5" value="1.62" />
+        <p class="tip">Stub Aug 2026: Fed ~12% of taxable, CA ~5.5%, Medicare EE ~1.62%. Turn on exemption to zero that tax line.</p>
+
+        <button class="btn" onclick="calculatePaycheck()">Calculate net pay</button>
+        <button class="btn secondary" onclick="usePayInAllocate()">Use net on Allocate tab</button>
+      </div>
+      <div id="pay-result" class="hidden"></div>
+    </div>
+
     <!-- ========== AUDIT TAB ========== -->
     <div id="tab-audit" class="hidden">
       <div class="card">
@@ -468,6 +575,15 @@
         <label>Notes (optional)</label>
         <textarea id="audit-notes" placeholder="e.g. Paid extra on Chase, baby shower gifts this week…"></textarea>
         <button class="btn" onclick="runAudit()">Run Weekly Audit</button>
+      </div>
+
+      <div class="card">
+        <h2><span class="dot" style="background:var(--sky, var(--accent))"></span> Paste balance snapshot</h2>
+        <p style="font-size:0.8rem;color:var(--muted);margin-bottom:8px;">
+          Ask Grok for a bank snapshot, then paste it here to fill account (and matching) balances. One line per item, e.g. <code>Bills: 1234.56</code>
+        </p>
+        <textarea id="audit-import-text" placeholder="Bills: 356.31&#10;Trents Pocket: 0.02&#10;Bri’s Pocket: 50.00&#10;Rent &amp; Utilites: 5.04&#10;Wedding Savings: 4.42&#10;VISA Platinum: 9855.78"></textarea>
+        <button class="btn secondary" onclick="importBalanceSnapshot()">Apply pasted balances</button>
       </div>
 
       <div class="card">
@@ -553,7 +669,7 @@
       <div class="card">
         <h2><span class="dot" style="background:var(--accent)"></span> Bank Accounts</h2>
         <p style="font-size:0.8rem;color:var(--muted);margin-bottom:10px;">
-          Permanent accounts match your bank: Bills, Mortgage, Trent’s Pocket, Bri’s Pocket, Savings, Emergency Fund. Tap 💵 to set current balances. Routing (where deposits go / Paid pulls from) is under <strong>More</strong>.
+          Permanent accounts match your bank (Bills, Misc Money, Wedding Savings, Spending Money, Trent’s Pocket, Bri’s Pocket, Equipment Repair, Rent &amp; Utilities). Tap 💵 to update balances. Routing is under <strong>More</strong>.
         </p>
         <ul class="item-list" id="list-accounts"></ul>
       </div>
@@ -662,13 +778,16 @@
         { id: 'ev-buffer', name: 'Buffer', amount: 100, accountTo: 'acct-bills' }
       ],
       income: [],
+      // Permanent accounts — names match real bank
       accounts: [
         { id: 'acct-bills', name: 'Bills', type: 'checking', balance: 0, isBillPay: true, permanent: true },
-        { id: 'acct-mortgage', name: 'Mortgage Account', type: 'checking', balance: 0, isBillPay: false, permanent: true },
+        { id: 'acct-misc', name: 'Misc Money', type: 'checking', balance: 0, isBillPay: false, permanent: true },
+        { id: 'acct-savings', name: 'Wedding Savings', type: 'savings', balance: 0, isBillPay: false, permanent: true },
+        { id: 'acct-spending', name: 'Spending Money', type: 'checking', balance: 0, isBillPay: false, permanent: true },
         { id: 'acct-trent', name: "Trent's Pocket", type: 'checking', balance: 0, isBillPay: false, permanent: true },
         { id: 'acct-bri', name: "Bri's Pocket", type: 'checking', balance: 0, isBillPay: false, permanent: true },
-        { id: 'acct-savings', name: 'Savings', type: 'savings', balance: 0, isBillPay: false, permanent: true },
-        { id: 'acct-emergency', name: 'Emergency Fund', type: 'savings', balance: 0, isBillPay: false, permanent: true }
+        { id: 'acct-equip', name: 'Trent Zurflueh Equipment Repair', type: 'checking', balance: 0, isBillPay: false, permanent: true },
+        { id: 'acct-mortgage', name: 'Rent & Utilities', type: 'checking', balance: 0, isBillPay: false, permanent: true }
       ],
       routing: {
         deposit: 'acct-bills',
@@ -677,31 +796,112 @@
         debt: { to: 'acct-bills', payFrom: 'acct-bills' },
         everyday: { to: 'acct-trent', payFrom: 'acct-trent' },
         leftover: { to: 'acct-bills', payFrom: 'acct-bills' },
-        goals: { to: 'acct-emergency', payFrom: 'acct-emergency' }
+        goals: { to: 'acct-savings', payFrom: 'acct-savings' }
       },
       debtAggression: 70, // 0–100: % of discretionary money that attacks debt
       monthlyLogs: [],
       audits: []
     };
 
-    const PERMANENT_ACCOUNT_IDS = ['acct-bills', 'acct-mortgage', 'acct-trent', 'acct-bri', 'acct-savings', 'acct-emergency'];
+    const PERMANENT_ACCOUNT_IDS = [
+      'acct-bills', 'acct-misc', 'acct-savings', 'acct-spending',
+      'acct-trent', 'acct-bri', 'acct-equip', 'acct-mortgage'
+    ];
 
     function ensurePermanentAccounts(merged) {
       const defaults = structuredClone(DEFAULT.accounts);
       if (!merged.accounts) merged.accounts = [];
+
+      function isEquipName(name) {
+        return /equipment/i.test(name || '');
+      }
+      function isTrentPocketName(name) {
+        // "Trent's Pocket" / "Trents Pocket" — never Equipment Repair
+        return /trent'?s?\s*pocket/i.test(name || '') && !isEquipName(name);
+      }
+
       defaults.forEach(def => {
-        const existing = merged.accounts.find(a => a.id === def.id || a.name === def.name);
+        let existing = merged.accounts.find(a => a.id === def.id);
+        if (!existing) {
+          existing = merged.accounts.find(a => {
+            const nm = a.name || '';
+            if (def.id === 'acct-trent') return isTrentPocketName(nm);
+            if (def.id === 'acct-equip') return isEquipName(nm);
+            if (def.id === 'acct-bri') return /bri'?s?\s*pocket/i.test(nm);
+            if (def.id === 'acct-mortgage') return /rent|mortgage|utilit/i.test(nm) && !isEquipName(nm);
+            if (def.id === 'acct-savings') return /wedding|savings/i.test(nm) && !/spending/i.test(nm);
+            if (def.id === 'acct-misc') return /^misc/i.test(nm);
+            if (def.id === 'acct-spending') return /spending/i.test(nm);
+            if (def.id === 'acct-bills') return /^bills?$/i.test(String(nm).trim());
+            return nm.toLowerCase() === (def.name || '').toLowerCase();
+          });
+        }
+        // Equipment Repair must never become Trent's Pocket
+        if (def.id === 'acct-trent' && existing && isEquipName(existing.name)) {
+          existing = null;
+        }
         if (!existing) {
           merged.accounts.push({ ...def });
         } else {
           existing.id = def.id;
           existing.name = def.name;
           existing.permanent = true;
+          existing.type = def.type;
           if (def.isBillPay) existing.isBillPay = true;
         }
       });
+
+      // Hard guarantee: every permanent id exists with correct bank name
+      defaults.forEach(def => {
+        let row = merged.accounts.find(a => a.id === def.id);
+        if (!row) {
+          merged.accounts.push({ ...def });
+        } else {
+          row.name = def.name;
+          row.permanent = true;
+          row.type = def.type || row.type;
+          if (def.isBillPay) row.isBillPay = true;
+        }
+      });
+
+      // Drop old Emergency Fund; migrate balance to Wedding Savings
+      merged.accounts = merged.accounts.filter(a => {
+        if (a.id === 'acct-emergency' || /^emergency fund$/i.test(a.name || '')) {
+          const sav = merged.accounts.find(x => x.id === 'acct-savings');
+          if (sav && (Number(a.balance) || 0) > 0) {
+            sav.balance = Math.round(((Number(sav.balance) || 0) + (Number(a.balance) || 0)) * 100) / 100;
+          }
+          return false;
+        }
+        return true;
+      });
+
+      // Dedupe by id (keep first = permanent with correct name)
+      const seen = new Set();
+      merged.accounts = merged.accounts.filter(a => {
+        if (!a.id || seen.has(a.id)) return false;
+        seen.add(a.id);
+        return true;
+      });
+
+      // Bank list order
+      const order = PERMANENT_ACCOUNT_IDS;
+      merged.accounts.sort((a, b) => {
+        const ia = order.indexOf(a.id);
+        const ib = order.indexOf(b.id);
+        if (ia === -1 && ib === -1) return 0;
+        if (ia === -1) return 1;
+        if (ib === -1) return -1;
+        return ia - ib;
+      });
+
       if (!merged.routing) merged.routing = structuredClone(DEFAULT.routing);
-      else merged.routing = { ...structuredClone(DEFAULT.routing), ...merged.routing };
+      else {
+        merged.routing = { ...structuredClone(DEFAULT.routing), ...merged.routing };
+        if (merged.routing.goals && merged.routing.goals.to === 'acct-emergency') {
+          merged.routing.goals = { to: 'acct-savings', payFrom: 'acct-savings' };
+        }
+      }
       return merged;
     }
 
@@ -743,7 +943,7 @@
 
     // ========== TABS ==========
     function switchTab(name) {
-      ['allocate','audit','budget','debts','goals','log','settings'].forEach(t => {
+      ['allocate','audit','budget','debts','goals','log','pay','settings'].forEach(t => {
         const el = document.getElementById('tab-' + t);
         if (el) el.classList.toggle('hidden', t !== name);
       });
@@ -756,6 +956,287 @@
         renderUnexpectedRecent();
       }
       if (name === 'log') renderMonthlyLog();
+    }
+
+    function calculatePaycheck() {
+      const which = document.getElementById('pay-which')?.value || 'main';
+      if (which === 'advance') {
+        const adv = (state.paySchedule && state.paySchedule.advanceAmount) || 3000;
+        window._lastPayNet = adv;
+        const el = document.getElementById('pay-result');
+        if (el) {
+          el.classList.remove('hidden');
+          el.innerHTML = `
+            <div class="result-box">
+              <h3>Advance (25th)</h3>
+              <div class="total-line"><span>Flat advance deposit</span><span>${money(adv)}</span></div>
+              <p class="tip" style="margin-top:10px;">This is paid back on the main (10th) check as “Advance Payback.” Use Allocate → Advance.</p>
+            </div>`;
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+        return;
+      }
+
+      const rate = Number(document.getElementById('pay-rate')?.value) || 42.56;
+      const regular = Number(document.getElementById('pay-regular')?.value) || 0;
+      const otH = Number(document.getElementById('pay-ot-hours')?.value) || 0;
+      const holidays = Number(document.getElementById('pay-holidays')?.value) || 0;
+      const flsa = Number(document.getElementById('pay-flsa')?.value) || 0;
+      const uniform = Number(document.getElementById('pay-uniform')?.value) || 0;
+      const otherEarn = Number(document.getElementById('pay-other-earn')?.value) || 0;
+      const otMult = 1.5;
+
+      const holidayHrs = holidays * 12;
+      const otPay = round2(otH * rate * otMult);
+      const holidayPay = round2(holidayHrs * rate * otMult);
+      const gross = round2(regular + otPay + holidayPay + flsa + uniform + otherEarn);
+
+      const pretax = round2(
+        (Number(document.getElementById('pay-med')?.value) || 0) +
+        (Number(document.getElementById('pay-vision')?.value) || 0) +
+        (Number(document.getElementById('pay-dental')?.value) || 0) +
+        (Number(document.getElementById('pay-retirement')?.value) || 0) +
+        (Number(document.getElementById('pay-pretax-other')?.value) || 0)
+      );
+
+      const advancePayback = document.getElementById('pay-advance-payback')?.checked ? 3000 : 0;
+      const posttax = round2(
+        advancePayback +
+        (Number(document.getElementById('pay-union')?.value) || 0) +
+        (Number(document.getElementById('pay-roth')?.value) || 0) +
+        (Number(document.getElementById('pay-other-post')?.value) || 0)
+      );
+
+      const fedExempt = !!document.getElementById('pay-fed-exempt')?.checked;
+      const caExempt = !!document.getElementById('pay-ca-exempt')?.checked;
+      const fedPct = Number(document.getElementById('pay-fed-pct')?.value) || 0;
+      const statePct = Number(document.getElementById('pay-state-pct')?.value) || 0;
+      const medPct = Number(document.getElementById('pay-medicare-pct')?.value) || 0;
+
+      const taxable = Math.max(0, gross - pretax);
+      const fed = fedExempt ? 0 : round2(taxable * (fedPct / 100));
+      const state = caExempt ? 0 : round2(taxable * (statePct / 100));
+      const medicare = round2(taxable * (medPct / 100));
+      const taxes = round2(fed + state + medicare);
+      const net = round2(gross - pretax - taxes - posttax);
+
+      window._lastPayNet = net;
+      const el = document.getElementById('pay-result');
+      if (!el) return;
+      el.classList.remove('hidden');
+      el.innerHTML = `
+        <div class="result-box">
+          <h3>Estimated main check (10th)</h3>
+          <div class="alloc-row"><div class="label">Regular / scheduled</div><div class="amt">${money(regular)}</div></div>
+          <div class="alloc-row"><div class="label">OT (${otH} hrs @ 1.5×)</div><div class="amt">${money(otPay)}</div></div>
+          <div class="alloc-row"><div class="label">Holiday (${holidayHrs} hrs = ${holidays} × 12 @ 1.5×)</div><div class="amt">${money(holidayPay)}</div></div>
+          <div class="alloc-row"><div class="label">FLSA</div><div class="amt">${money(flsa)}</div></div>
+          <div class="alloc-row"><div class="label">Uniform allowance</div><div class="amt">${money(uniform)}</div></div>
+          ${otherEarn ? `<div class="alloc-row"><div class="label">Other earnings</div><div class="amt">${money(otherEarn)}</div></div>` : ''}
+          <div class="alloc-row"><div class="label"><strong>Gross</strong></div><div class="amt"><strong>${money(gross)}</strong></div></div>
+          <div class="alloc-row"><div class="label">Before-tax deductions</div><div class="amt">−${money(pretax)}</div></div>
+          <div class="alloc-row"><div class="label">Fed taxable (approx)</div><div class="amt">${money(taxable)}</div></div>
+          <div class="alloc-row"><div class="label">Federal ${fedExempt ? '(exempt)' : fedPct + '%'}</div><div class="amt">−${money(fed)}</div></div>
+          <div class="alloc-row"><div class="label">CA state ${caExempt ? '(exempt)' : statePct + '%'}</div><div class="amt">−${money(state)}</div></div>
+          <div class="alloc-row"><div class="label">Medicare EE ${medPct}%</div><div class="amt">−${money(medicare)}</div></div>
+          <div class="alloc-row"><div class="label">After-tax ${advancePayback ? '(incl. $3,000 advance payback)' : ''}</div><div class="amt">−${money(posttax)}</div></div>
+          <div class="total-line"><span>Estimated net to bank</span><span>${money(net)}</span></div>
+          <p class="tip" style="margin-top:10px;">
+            Your Aug stub net was <strong>$8,515.63</strong> with ~102 OT hrs + $3k advance payback.
+            Tweak OT hours &amp; holidays for the next period. Uncheck advance payback if this isn’t a 10th check with payback.
+          </p>
+        </div>
+      `;
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function usePayInAllocate() {
+      const net = window._lastPayNet;
+      if (net == null || !(net > 0)) {
+        alert('Calculate a paycheck first');
+        return;
+      }
+      switchTab('allocate');
+      const inp = document.getElementById('paycheck-amount');
+      if (inp) inp.value = Number(net).toFixed(2);
+      const type = document.getElementById('paycheck-type');
+      // leave type as user set
+      alert('Deposit amount set to estimated net ' + money(net) + '. Tap Auto-allocate when ready.');
+    }
+
+    function importBalanceSnapshot() {
+      const text = (document.getElementById('audit-import-text')?.value || '').trim();
+      if (!text) {
+        alert('Paste a snapshot first (one “Name: amount” per line)');
+        return;
+      }
+      ensurePermanentAccounts(state);
+      if (!state.accounts) state.accounts = [];
+      if (!state.debts) state.debts = [];
+
+      function parseAmount(s) {
+        const m = String(s).replace(/[,$]/g, '').match(/-?\d+(\.\d+)?/);
+        return m ? Number(m[0]) : null;
+      }
+      function norm(s) {
+        return String(s).toLowerCase().replace(/[^a-z0-9]/g, '');
+      }
+
+      // Map bank export names → permanent account ids
+      const ACCOUNT_ALIASES = {
+        bills: 'acct-bills',
+        bill: 'acct-bills',
+        rentutilites: 'acct-mortgage',
+        rentutilities: 'acct-mortgage',
+        rentutility: 'acct-mortgage',
+        rent: 'acct-mortgage',
+        mortgage: 'acct-mortgage',
+        mortgageaccount: 'acct-mortgage',
+        trentsspocket: 'acct-trent',
+        trentpocket: 'acct-trent',
+        trentspocket: 'acct-trent',
+        // do NOT map bare "trent" — that steals Equipment Repair
+        brispocket: 'acct-bri',
+        bripocket: 'acct-bri',
+        savings: 'acct-savings',
+        weddingsavings: 'acct-savings',
+        wedding: 'acct-savings',
+        miscmoney: 'acct-misc',
+        misc: 'acct-misc',
+        spendingmoney: 'acct-spending',
+        spending: 'acct-spending',
+        trentzurfluhequipmentrepair: 'acct-equip',
+        equipmentrepair: 'acct-equip',
+        equipment: 'acct-equip'
+      };
+
+      function looksLikeDebt(n, name, amt) {
+        if (/visa|mastercard|amex|discover|credit|loan|mortgage|auto|chevy|chevrolet|silverado|ford|toyota|dutc|rv|trailer|platinum|card/.test(n)) return true;
+        if (Math.abs(amt) >= 500 && /20\d{2}|series|class|hd/.test(n)) return true;
+        return false;
+      }
+
+      function findAccount(n, name) {
+        // Equipment Repair first (contains "trent" in full bank name)
+        if (/equipment/i.test(name || '') || n.includes('equipment')) {
+          return getAccountById('acct-equip') || null;
+        }
+        if (/trent'?s?\s*pocket/i.test(name || '') || n === 'trentspocket' || n === 'trentpocket') {
+          return getAccountById('acct-trent') || null;
+        }
+        if (ACCOUNT_ALIASES[n]) {
+          const a = getAccountById(ACCOUNT_ALIASES[n]);
+          if (a) return a;
+        }
+        // Longer alias keys first to avoid short false matches
+        const keys = Object.keys(ACCOUNT_ALIASES).sort((a, b) => b.length - a.length);
+        for (const key of keys) {
+          if (key.length < 4) continue;
+          if (n.includes(key) || (key.length >= 6 && key.includes(n))) {
+            const a = getAccountById(ACCOUNT_ALIASES[key]);
+            if (a) return a;
+          }
+        }
+        return (state.accounts || []).find(a => {
+          const an = norm(a.name);
+          if (/equipment/i.test(a.name) && !n.includes('equipment')) return false;
+          return an === n || (n.length >= 5 && (n.includes(an) || an.includes(n)));
+        });
+      }
+
+      function findDebt(n, name) {
+        return (state.debts || []).find(d => {
+          const dn = norm(d.name);
+          return dn === n || n.includes(dn) || dn.includes(n) ||
+            (n.includes('visa') && dn.includes('visa')) ||
+            (n.includes('silverado') && dn.includes('silverado')) ||
+            (n.includes('dutc') && dn.includes('dutc'));
+        });
+      }
+
+      const lines = text.split(/\n+/);
+      let matched = 0;
+      const report = [];
+
+      lines.forEach(line => {
+        const cleaned = line.replace(/^[-*•]\s*/, '').trim();
+        if (!cleaned) return;
+        let name = '', amtStr = '';
+        if (cleaned.includes(':')) {
+          const idx = cleaned.indexOf(':');
+          name = cleaned.slice(0, idx).trim();
+          amtStr = cleaned.slice(idx + 1).trim();
+        } else if (cleaned.includes('\t')) {
+          const parts = cleaned.split(/\t+/);
+          name = parts[0]; amtStr = parts[1];
+        } else {
+          const m = cleaned.match(/^(.*?)(\$?-?\d[\d,]*\.?\d*)\s*$/);
+          if (m) { name = m[1].trim(); amtStr = m[2]; }
+        }
+        const amt = parseAmount(amtStr);
+        if (!name || amt == null || isNaN(amt)) return;
+        const n = norm(name);
+
+        // Prefer debt detection for loan/credit style names
+        if (looksLikeDebt(n, name, amt)) {
+          let debt = findDebt(n, name);
+          if (!debt) {
+            let type = 'other';
+            if (/visa|mastercard|amex|discover|platinum|creditcard|card/.test(n)) type = 'credit';
+            else if (/chevy|chevrolet|silverado|ford|toyota|auto|truck/.test(n)) type = 'auto';
+            else if (/dutc|rv|trailer|camper/.test(n)) type = 'other';
+            debt = {
+              id: uid(),
+              name: name.replace(/\s*\($/, '').trim(),
+              type,
+              balance: round2(Math.abs(amt)),
+              minPayment: 0,
+              rate: 0,
+              dueDay: null
+            };
+            state.debts.push(debt);
+            report.push(debt.name + ' (new debt) → ' + money(debt.balance));
+          } else {
+            debt.balance = round2(Math.abs(amt));
+            report.push(debt.name + ' (debt) → ' + money(debt.balance));
+          }
+          matched++;
+          return;
+        }
+
+        let acct = findAccount(n, name);
+        if (acct) {
+          acct.balance = round2(amt);
+          matched++;
+          report.push(acct.name + ' → ' + money(amt));
+          return;
+        }
+
+        // Create unknown cash account
+        const newAcct = {
+          id: 'acct-' + uid().slice(0, 8),
+          name: name,
+          type: 'checking',
+          balance: round2(amt),
+          isBillPay: false,
+          permanent: false
+        };
+        state.accounts.push(newAcct);
+        matched++;
+        report.push(newAcct.name + ' (new account) → ' + money(amt));
+      });
+
+      if (!matched) {
+        alert('Could not parse any balances. Use lines like: Bills: 356.31');
+        return;
+      }
+      syncCushionGoalFromAccount();
+      save();
+      prepareAuditForm();
+      updateQuickStats();
+      renderAccountsList();
+      renderAll();
+      alert('Updated ' + matched + ' items:\n\n' + report.join('\n'));
     }
 
     // ========== PHASE ==========
@@ -1060,7 +1541,14 @@
               <span class="badge sky">${a.type || 'checking'}</span>
               ${a.permanent ? '<span class="badge green">Permanent</span>' : ''}
             </div>
-            <div class="item-meta">${a.id === 'acct-bills' ? 'Default deposit / bills' : (a.id === 'acct-mortgage' ? 'Mortgage holds' : 'Update to match bank')}</div>
+            <div class="item-meta">${
+              a.id === 'acct-bills' ? 'Deposit / bills' :
+              a.id === 'acct-mortgage' ? 'Rent & utilities hold' :
+              a.id === 'acct-savings' ? 'Goals / wedding savings' :
+              a.id === 'acct-trent' ? "Trent's spending" :
+              a.id === 'acct-bri' ? "Bri's spending" :
+              'Matches bank — update with 💵'
+            }</div>
           </div>
           <div class="item-amount">${money(a.balance || 0)}</div>
           <div class="item-actions">
@@ -1363,7 +1851,7 @@
                 <div style="display:flex;justify-content:space-between;width:100%;">
                   <div class="item-info">
                     <div class="item-name">${escapeHtml(g.name)} ${g.isPrimary ? '<span class="badge green">Primary</span>' : ''}</div>
-                    <div class="item-meta">${money(cur)} of ${money(g.target)} · ${money(g.monthlyContribute != null ? g.monthlyContribute : 0)}/mo${g.isPrimary ? ' · Emergency Fund acct' : ''}</div>
+                    <div class="item-meta">${money(cur)} of ${money(g.target)} · ${money(g.monthlyContribute != null ? g.monthlyContribute : 0)}/mo${g.isPrimary ? ' · Wedding Savings' : ''}</div>
                   </div>
                   <div class="item-actions">
                     <button class="icon-btn" onclick="editItem('goals','${g.id}')">✏️</button>
@@ -1424,17 +1912,17 @@
     }
 
     function cushionActualBalance() {
-      // Prefer real Emergency Fund account; fall back to primary goal.current
-      const emerg = getAccountById('acct-emergency');
+      // Prefer Wedding Savings (goals account); fall back to primary goal.current
+      const sav = getAccountById('acct-savings');
       const primary = state.goals.find(g => g.isPrimary) || state.goals[0];
-      if (emerg) return Number(emerg.balance) || 0;
+      if (sav) return Number(sav.balance) || 0;
       return primary ? (Number(primary.current) || 0) : 0;
     }
 
     function syncCushionGoalFromAccount() {
       const primary = state.goals.find(g => g.isPrimary) || state.goals[0];
-      const emerg = getAccountById('acct-emergency');
-      if (primary && emerg) primary.current = Number(emerg.balance) || 0;
+      const sav = getAccountById('acct-savings');
+      if (primary && sav) primary.current = Number(sav.balance) || 0;
     }
 
     function updateQuickStats() {
@@ -1449,7 +1937,24 @@
       const cushionPct = cushionTarget > 0
         ? Math.min(100, Math.round((cushionNow / cushionTarget) * 1000) / 10)
         : 0;
-      const totalDebt = sum(state.debts, 'balance');
+      const debts = state.debts || [];
+      function debtBucket(d) {
+        const t = (d.type || '').toLowerCase();
+        const n = (d.name || '').toLowerCase();
+        if (t === 'credit' || /visa|mastercard|amex|discover|platinum|credit\s*card|\bcc\b/.test(n)) return 'credit';
+        if (t === 'auto' || /chevy|chevrolet|silverado|ford|toyota|honda|truck|auto|car|vehicle|dutc|rv|trailer|camper/.test(n)) return 'vehicle';
+        return 'other';
+      }
+      let creditDebt = 0, vehicleDebt = 0, otherDebt = 0;
+      debts.forEach(d => {
+        const bal = Number(d.balance) || 0;
+        const b = debtBucket(d);
+        if (b === 'credit') creditDebt += bal;
+        else if (b === 'vehicle') vehicleDebt += bal;
+        else otherDebt += bal;
+      });
+      const vehicleOther = vehicleDebt + otherDebt;
+      const totalDebt = creditDebt + vehicleOther;
       const sched = state.paySchedule || DEFAULT.paySchedule;
       const advanceAmt = sched.advanceAmount || 3000;
       const fund = typeof fundingNeed === 'function' ? fundingNeed(40) : { oblig: { total: 0 }, available: 0, shortfall: 0 };
@@ -1457,6 +1962,8 @@
       const coveredPct = obligTotal > 0
         ? Math.min(100, Math.round((Math.min(fund.available, obligTotal) / obligTotal) * 1000) / 10)
         : 100;
+      const creditPct = totalDebt > 0 ? Math.min(100, Math.round((creditDebt / totalDebt) * 1000) / 10) : 0;
+      const vehiclePct = totalDebt > 0 ? Math.min(100, Math.round((vehicleOther / totalDebt) * 1000) / 10) : 0;
 
       el.innerHTML = `
         <div class="summary-card">
@@ -1476,7 +1983,26 @@
           <div class="value" style="color:var(--amber)">${money(cushionLeft)}</div>
         </div>
         <div class="summary-card" style="grid-column:1/-1;">
-          <div class="label">House + Baby cushion (Emergency Fund account)</div>
+          <div class="label">Debt breakdown</div>
+          <div class="alloc-row" style="border:none;padding:6px 0 0;">
+            <div class="label">Credit cards</div>
+            <div class="amt" style="color:var(--rose)">${money(creditDebt)}</div>
+          </div>
+          <div class="progress-wrap">
+            <div class="progress-header"><span>${creditPct}% of debt</span><span class="pct">${creditPct}%</span></div>
+            <div class="progress-bar"><div class="progress-fill rose" style="width:${creditPct}%"></div></div>
+          </div>
+          <div class="alloc-row" style="border:none;padding:10px 0 0;">
+            <div class="label">Vehicles / other</div>
+            <div class="amt" style="color:var(--amber)">${money(vehicleOther)}</div>
+          </div>
+          <div class="progress-wrap">
+            <div class="progress-header"><span>${vehiclePct}% of debt${otherDebt > 0 && vehicleDebt > 0 ? ' · vehicles ' + money(vehicleDebt) + ' · other ' + money(otherDebt) : ''}</span><span class="pct">${vehiclePct}%</span></div>
+            <div class="progress-bar"><div class="progress-fill amber" style="width:${vehiclePct}%"></div></div>
+          </div>
+        </div>
+        <div class="summary-card" style="grid-column:1/-1;">
+          <div class="label">House + Baby cushion (Wedding Savings)</div>
           <div class="progress-wrap">
             <div class="progress-header"><span>${money(cushionNow)} of ${money(cushionTarget)}</span><span class="pct">${cushionPct}%</span></div>
             <div class="progress-bar"><div class="progress-fill ${cushionPct >= 100 ? '' : (cushionPct >= 50 ? 'sky' : 'amber')}" style="width:${cushionPct}%"></div></div>
