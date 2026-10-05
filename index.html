@@ -685,7 +685,7 @@
       <div class="card">
         <h2>Pay Schedule</h2>
         <p style="font-size:0.8rem;color:var(--muted);margin-bottom:10px;">
-          Advance on the 25th, main paycheck on the 10th.
+          Still labeled <strong>10th</strong> (main) and <strong>25th</strong> (advance). Deposit hits the credit union on the <strong>business day before</strong> (skips weekends &amp; federal holidays).
         </p>
         <label>Advance amount on the 25th ($)</label>
         <input type="number" id="setting-advance-amount" inputmode="decimal" step="0.01" min="0" onchange="setAdvanceAmount(this.value)" />
@@ -1394,6 +1394,102 @@
       return candidate;
     }
 
+    function nthWeekdayOfMonth(year, month, weekday, n) {
+      // weekday: 0=Sun … 6=Sat; n: 1–4 or -1 for last
+      if (n === -1) {
+        const last = new Date(year, month + 1, 0);
+        const d = new Date(last);
+        while (d.getDay() !== weekday) d.setDate(d.getDate() - 1);
+        return d;
+      }
+      let count = 0;
+      for (let day = 1; day <= 31; day++) {
+        const d = new Date(year, month, day);
+        if (d.getMonth() !== month) break;
+        if (d.getDay() === weekday) {
+          count++;
+          if (count === n) return d;
+        }
+      }
+      return null;
+    }
+
+    function isUSFederalHoliday(date) {
+      const y = date.getFullYear();
+      const m = date.getMonth();
+      const d = date.getDate();
+      const key = m + '-' + d;
+      // Fixed-date holidays (calendar date)
+      const fixed = {
+        '0-1': true,   // New Year's Day
+        '5-19': true,  // Juneteenth
+        '6-4': true,   // Independence Day
+        '10-11': true, // Veterans Day
+        '11-25': true  // Christmas
+      };
+      if (fixed[key]) return true;
+      // Observed on weekday if fixed falls on weekend (still treat observed day as holiday)
+      function observed(month, day) {
+        const dt = new Date(y, month, day);
+        const dow = dt.getDay();
+        if (dow === 6) return new Date(y, month, day - 1); // Sat → Fri
+        if (dow === 0) return new Date(y, month, day + 1); // Sun → Mon
+        return dt;
+      }
+      const obsList = [
+        observed(0, 1), observed(5, 19), observed(6, 4), observed(10, 11), observed(11, 25)
+      ];
+      for (const o of obsList) {
+        if (o.getMonth() === m && o.getDate() === d) return true;
+      }
+      // Floating
+      const mlk = nthWeekdayOfMonth(y, 0, 1, 3);           // 3rd Mon Jan
+      const presidents = nthWeekdayOfMonth(y, 1, 1, 3);    // 3rd Mon Feb
+      const memorial = nthWeekdayOfMonth(y, 4, 1, -1);     // last Mon May
+      const labor = nthWeekdayOfMonth(y, 8, 1, 1);         // 1st Mon Sep
+      const columbus = nthWeekdayOfMonth(y, 9, 1, 2);      // 2nd Mon Oct
+      const thanksgiving = nthWeekdayOfMonth(y, 10, 4, 4); // 4th Thu Nov
+      const floaters = [mlk, presidents, memorial, labor, columbus, thanksgiving];
+      return floaters.some(h => h && h.getMonth() === m && h.getDate() === d);
+    }
+
+    function isNonBusinessDay(date) {
+      const dow = date.getDay();
+      if (dow === 0 || dow === 6) return true;
+      return isUSFederalHoliday(date);
+    }
+
+    /** Calendar day immediately before `date`, then keep going back until a business day. */
+    function previousBusinessDay(date) {
+      const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      d.setDate(d.getDate() - 1);
+      while (isNonBusinessDay(d)) {
+        d.setDate(d.getDate() - 1);
+      }
+      return d;
+    }
+
+    /**
+     * Actual deposit date for a named pay (10th or 25th):
+     * Credit union posts the business day before the scheduled calendar day
+     * (also backs up for weekends / federal holidays).
+     */
+    function depositDateForScheduledDay(scheduledDay, from = new Date()) {
+      // Find next occurrence of the scheduled calendar day (10 or 25)
+      let nominal = nextDueDate(scheduledDay, from);
+      if (!nominal) return null;
+      let deposit = previousBusinessDay(nominal);
+      const today = new Date(from.getFullYear(), from.getMonth(), from.getDate());
+      // If deposit already passed, use next month's scheduled day
+      if (deposit < today) {
+        const nextMonthStart = new Date(nominal.getFullYear(), nominal.getMonth() + 1, 1);
+        nominal = nextDueDate(scheduledDay, nextMonthStart);
+        if (!nominal) return null;
+        deposit = previousBusinessDay(nominal);
+      }
+      return { deposit, nominal, scheduledDay };
+    }
+
     function daysUntil(date) {
       if (!date) return null;
       const today = new Date();
@@ -1675,11 +1771,11 @@
 
     function nextPayDate(from = new Date()) {
       const sched = state.paySchedule || DEFAULT.paySchedule;
-      const d10 = nextDueDate(sched.mainDay || 10, from);
-      const d25 = nextDueDate(sched.advanceDay || 25, from);
-      if (!d10) return d25;
-      if (!d25) return d10;
-      return d10 <= d25 ? d10 : d25;
+      const main = depositDateForScheduledDay(sched.mainDay || 10, from);
+      const adv = depositDateForScheduledDay(sched.advanceDay || 25, from);
+      if (!main) return adv ? adv.deposit : null;
+      if (!adv) return main.deposit;
+      return main.deposit <= adv.deposit ? main.deposit : adv.deposit;
     }
 
     function upcomingObligations(horizonDays = 40) {
@@ -1791,19 +1887,22 @@
 
       const now = new Date();
 
-      // Next pay dates (10th main, 25th advance)
+      // Next pay dates — still labeled 10th / 25th, date = business day before (credit union)
       const sched = state.paySchedule || DEFAULT.paySchedule;
       if (sched && sched.enabled !== false) {
-        [ { day: sched.advanceDay || 25, label: sched.advanceLabel || 'Advance', amount: sched.advanceAmount || 3000 },
-          { day: sched.mainDay || 10, label: sched.mainLabel || 'Main paycheck', amount: null }
+        [ { day: sched.advanceDay || 25, label: sched.advanceLabel || 'Advance (25th)', amount: sched.advanceAmount || 3000 },
+          { day: sched.mainDay || 10, label: sched.mainLabel || 'Main paycheck (10th)', amount: null }
         ].forEach(p => {
-          const due = nextDueDate(p.day, now);
-          if (!due) return;
+          const info = depositDateForScheduledDay(p.day, now);
+          if (!info) return;
+          const earlyNote = info.deposit.getDate() !== info.nominal.getDate()
+            ? ' · posts ' + formatShortDate(info.deposit) + ' (day before ' + formatShortDate(info.nominal) + ')'
+            : '';
           items.push({
             kind: 'pay',
-            label: p.label,
-            date: due,
-            days: daysUntil(due),
+            label: p.label + earlyNote,
+            date: info.deposit,
+            days: daysUntil(info.deposit),
             amount: p.amount,
             paid: false,
             id: null,
@@ -2116,7 +2215,7 @@
         </div>
         <div class="summary-card" style="grid-column:1/-1;">
           <div class="label">Pay schedule</div>
-          <div class="value" style="font-size:0.95rem;">25th: ${money(advanceAmt)} advance · 10th: main paycheck</div>
+          <div class="value" style="font-size:0.95rem;">25th advance ${money(advanceAmt)} · 10th main · posts business day before</div>
         </div>
       `;
     }
@@ -3327,29 +3426,27 @@
     let lastShareText = '';
 
     function nextPaydayInfo(from = new Date()) {
-      // Pay days: 10th (main) and 25th (advance)
-      const y = from.getFullYear();
-      const m = from.getMonth();
-      const d = from.getDate();
-      const candidates = [];
-      // this month
-      [10, 25].forEach(day => {
-        const dt = new Date(y, m, day);
-        if (dt >= new Date(y, m, d)) candidates.push(dt);
-      });
-      // next month
-      [10, 25].forEach(day => {
-        candidates.push(new Date(y, m + 1, day));
-      });
-      candidates.sort((a, b) => a - b);
-      const next = candidates[0];
-      const start = new Date(y, m, d);
-      start.setHours(0, 0, 0, 0);
-      const end = new Date(next);
-      end.setHours(0, 0, 0, 0);
-      const days = Math.max(0, Math.round((end - start) / 86400000));
-      const which = next.getDate() === 25 ? 'Advance (25th)' : 'Main paycheck (10th)';
-      return { date: next, days, which, label: next.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) };
+      const sched = state.paySchedule || DEFAULT.paySchedule;
+      const main = depositDateForScheduledDay(sched.mainDay || 10, from);
+      const adv = depositDateForScheduledDay(sched.advanceDay || 25, from);
+      let best = null;
+      if (main && adv) best = main.deposit <= adv.deposit ? main : adv;
+      else best = main || adv;
+      if (!best) {
+        return { date: from, days: 0, which: 'Unknown', label: '—' };
+      }
+      const which = best.scheduledDay === 25 ? 'Advance (25th)' : 'Main paycheck (10th)';
+      const days = daysUntil(best.deposit);
+      const label = best.deposit.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+      const nominalLabel = best.nominal.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      return {
+        date: best.deposit,
+        nominal: best.nominal,
+        days: days != null ? days : 0,
+        which,
+        label,
+        note: 'Posts ' + label + ' (business day before ' + nominalLabel + ')'
+      };
     }
 
     function generateShareReport() {
@@ -3396,7 +3493,8 @@
       lines.push('Mode: ' + (state.phase === 'cushion' ? 'Building Savings' : 'Attacking Debt (CCs first)'));
       lines.push('');
       lines.push('—— PAYDAY ——');
-      lines.push('Next deposit: ' + payday.which + ' · ' + payday.label);
+      lines.push('Next check: ' + payday.which);
+      lines.push('Money in account: ' + payday.label + (payday.note ? ' · ' + payday.note : ''));
       lines.push('Days until payday: ' + payday.days);
       lines.push('');
       lines.push('—— SPENDING LEFT ——');
