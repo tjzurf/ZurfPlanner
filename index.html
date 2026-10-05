@@ -2604,8 +2604,8 @@
         <div class="card">
           <h2>Apply to accounts</h2>
           <p style="font-size:0.8rem;color:var(--muted);margin-bottom:8px;">
-            After the money hits your real bank, tap below. The app will:
-            deposit into bill-pay checking, subtract payments (housing/bills/debt), add goal savings, and update balances.
+            After the money hits your real bank, tap below. The app stages the deposit into Bills / Rent / Pockets / Savings.
+            It does <strong>not</strong> mark bills or debts paid — tap ✅ on each when the payment actually goes out.
           </p>
           <ol style="padding-left:18px;font-size:0.85rem;color:var(--muted);line-height:1.55;margin-bottom:10px;">
             ${alloc.map(l => `<li><strong style="color:var(--text)">${money(l.amount)}</strong> → ${escapeHtml(l.label)}</li>`).join('')}
@@ -2690,32 +2690,18 @@
           return;
         }
         if (line.kind === 'debt_min') {
-          const payFrom = routeForCategory('debt').payFrom || depositId;
-          // Move from deposit to pay-from if needed, then pay out
-          if (payFrom !== depositId) transfer(depositId, payFrom, amt);
-          const payer = getAccountById(payFrom);
-          if (payer) payer.balance = round2((Number(payer.balance) || 0) - amt);
-          let left = amt;
-          const debts = (state.debts || []).filter(d => !isPaidThisPeriod(d) && (Number(d.minPayment) || 0) > 0);
-          const totalMin = debts.reduce((s, d) => s + (Number(d.minPayment) || 0), 0) || 1;
-          debts.forEach(d => {
-            const share = round2(amt * ((Number(d.minPayment) || 0) / totalMin));
-            const pay = Math.min(share, left, Number(d.balance) || 0);
-            d.balance = round2(Math.max(0, (Number(d.balance) || 0) - pay));
-            left = round2(left - pay);
-            if (pay >= (Number(d.minPayment) || 0) - 0.02) d.paidPeriod = periodKey();
-          });
-          summary.push(money(amt) + ' debt mins paid from ' + (payer?.name || 'account'));
+          // Stage only — do NOT mark paid or reduce debt until you tap ✅
+          const dest = routeForCategory('debt').to || depositId;
+          transfer(depositId, dest, amt);
+          summary.push(money(amt) + ' debt mins held in ' + (getAccountById(dest)?.name || 'account') + ' until you mark Paid');
           return;
         }
         if (line.kind === 'extra_debt' && line.id) {
-          const payFrom = routeForCategory('debt').payFrom || depositId;
-          if (payFrom !== depositId) transfer(depositId, payFrom, amt);
-          const payer = getAccountById(payFrom);
-          if (payer) payer.balance = round2((Number(payer.balance) || 0) - amt);
+          // Stage only — mark Paid (or pay in real bank) before reducing debt
+          const dest = routeForCategory('debt').to || depositId;
+          transfer(depositId, dest, amt);
           const d = (state.debts || []).find(x => x.id === line.id);
-          if (d) d.balance = round2(Math.max(0, (Number(d.balance) || 0) - amt));
-          summary.push(money(amt) + ' extra → ' + (d?.name || 'debt'));
+          summary.push(money(amt) + ' extra for ' + (d?.name || 'debt') + ' held until Paid');
           return;
         }
       });
