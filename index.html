@@ -458,7 +458,7 @@
           <button id="phase-cushion" class="active" onclick="setPhase('cushion')">1. Build Cushion</button>
           <button id="phase-debt" onclick="setPhase('debt')">2. Attack Debt</button>
         </div>
-        <p class="tip" id="phase-tip">Right now: cover minimums + grow your house & baby cash cushion at your monthly rate.</p>
+        <p class="tip" id="phase-tip">Right now: cover minimums + grow Savings (Misc Money) at your monthly rate.</p>
         <div id="aggression-panel" class="hidden">
           <label style="margin-top:12px;">Debt aggression — how much extra goes to debt vs kept</label>
           <input type="range" id="debt-aggression" min="0" max="100" step="5" value="70" oninput="onAggressionChange(this.value)" style="width:100%;accent-color:var(--rose);" />
@@ -669,7 +669,7 @@
       <div class="card">
         <h2><span class="dot" style="background:var(--accent)"></span> Bank Accounts</h2>
         <p style="font-size:0.8rem;color:var(--muted);margin-bottom:10px;">
-          Permanent accounts match your bank (Bills, Misc Money, Wedding Savings, Spending Money, Trent’s Pocket, Bri’s Pocket, Equipment Repair, Rent &amp; Utilities). Tap 💵 to update balances. Routing is under <strong>More</strong>.
+          Drag ⠿ or use ↑↓ to reorder. Tap 💵 to update balances. <strong>Savings</strong> goal tracks Misc Money; <strong>Wedding Savings</strong> tracks that account. Routing under <strong>More</strong>.
         </p>
         <ul class="item-list" id="list-accounts"></ul>
       </div>
@@ -766,7 +766,8 @@
       bills: [],
       debts: [],
       goals: [
-        { id: 'cushion', name: 'House + Baby Cash Cushion', target: 10000, current: 0, isPrimary: true, monthlyContribute: 200 }
+        { id: 'savings', name: 'Savings', target: 10000, current: 0, isPrimary: true, monthlyContribute: 200, accountId: 'acct-misc' },
+        { id: 'wedding', name: 'Wedding Savings', target: 5000, current: 0, isPrimary: false, monthlyContribute: 0, accountId: 'acct-savings' }
       ],
       // Per-paycheck allowance (between checks) — matches family $750 plan
       everyday: [
@@ -796,7 +797,7 @@
         debt: { to: 'acct-bills', payFrom: 'acct-bills' },
         everyday: { to: 'acct-trent', payFrom: 'acct-trent' },
         leftover: { to: 'acct-bills', payFrom: 'acct-bills' },
-        goals: { to: 'acct-savings', payFrom: 'acct-savings' }
+        goals: { to: 'acct-misc', payFrom: 'acct-misc' }
       },
       debtAggression: 70, // 0–100: % of discretionary money that attacks debt
       monthlyLogs: [],
@@ -884,16 +885,18 @@
         return true;
       });
 
-      // Bank list order
-      const order = PERMANENT_ACCOUNT_IDS;
-      merged.accounts.sort((a, b) => {
-        const ia = order.indexOf(a.id);
-        const ib = order.indexOf(b.id);
-        if (ia === -1 && ib === -1) return 0;
-        if (ia === -1) return 1;
-        if (ib === -1) return -1;
-        return ia - ib;
-      });
+      // Bank list order (skip if user reordered)
+      if (!merged.accountOrderLocked) {
+        const order = PERMANENT_ACCOUNT_IDS;
+        merged.accounts.sort((a, b) => {
+          const ia = order.indexOf(a.id);
+          const ib = order.indexOf(b.id);
+          if (ia === -1 && ib === -1) return 0;
+          if (ia === -1) return 1;
+          if (ib === -1) return -1;
+          return ia - ib;
+        });
+      }
 
       if (!merged.routing) merged.routing = structuredClone(DEFAULT.routing);
       else {
@@ -924,7 +927,23 @@
         if (merged.goals && Array.isArray(merged.goals)) {
           merged.goals.forEach(g => {
             if (g.monthlyContribute == null) g.monthlyContribute = g.isPrimary ? 200 : 0;
+            if (g.isPrimary || g.id === 'cushion' || /house|baby|cushion/i.test(g.name || '')) {
+              g.id = g.id === 'cushion' ? 'savings' : g.id;
+              g.name = 'Savings';
+              g.isPrimary = true;
+              g.accountId = 'acct-misc';
+            }
+            if (g.id === 'wedding' || /wedding|emergency/i.test(g.name || '')) {
+              if (/emergency/i.test(g.name || '') && !/wedding/i.test(g.name || '')) g.name = 'Wedding Savings';
+              g.accountId = g.accountId || 'acct-savings';
+            }
           });
+          if (!merged.goals.some(g => g.isPrimary)) {
+            merged.goals.unshift({ id: 'savings', name: 'Savings', target: 10000, current: 0, isPrimary: true, monthlyContribute: 200, accountId: 'acct-misc' });
+          }
+          if (!merged.goals.some(g => g.id === 'wedding' || /wedding/i.test(g.name || ''))) {
+            merged.goals.push({ id: 'wedding', name: 'Wedding Savings', target: 5000, current: 0, isPrimary: false, monthlyContribute: 0, accountId: 'acct-savings' });
+          }
         }
         return merged;
       } catch {
@@ -1534,29 +1553,83 @@
       if (!el) return;
       ensurePermanentAccounts(state);
       const items = state.accounts || [];
-      el.innerHTML = items.map(a => `
-        <li class="item">
+      el.innerHTML = items.map((a, idx) => `
+        <li class="item" draggable="true" data-acct-id="${a.id}" data-acct-idx="${idx}"
+          ondragstart="onAcctDragStart(event)" ondragover="onAcctDragOver(event)" ondrop="onAcctDrop(event)" ondragend="onAcctDragEnd(event)">
+          <div class="item-actions" style="cursor:grab;padding-right:4px;" title="Drag to reorder">
+            <span style="color:var(--muted);font-size:1.1rem;user-select:none;">⠿</span>
+          </div>
           <div class="item-info">
             <div class="item-name">${escapeHtml(a.name)}
               <span class="badge sky">${a.type || 'checking'}</span>
               ${a.permanent ? '<span class="badge green">Permanent</span>' : ''}
             </div>
             <div class="item-meta">${
-              a.id === 'acct-bills' ? 'Deposit / bills' :
+              a.id === 'acct-bills' ? 'Deposit / bills / debt mins' :
               a.id === 'acct-mortgage' ? 'Rent & utilities hold' :
-              a.id === 'acct-savings' ? 'Goals / wedding savings' :
+              a.id === 'acct-misc' ? 'Savings goal' :
+              a.id === 'acct-savings' ? 'Wedding Savings goal' :
               a.id === 'acct-trent' ? "Trent's spending" :
               a.id === 'acct-bri' ? "Bri's spending" :
-              'Matches bank — update with 💵'
+              'Update with 💵'
             }</div>
           </div>
           <div class="item-amount">${money(a.balance || 0)}</div>
           <div class="item-actions">
             <button class="icon-btn" title="Update balance" onclick="quickUpdateAccount('${a.id}')">💵</button>
+            <button class="icon-btn" title="Move up" onclick="moveAccount('${a.id}',-1)">↑</button>
+            <button class="icon-btn" title="Move down" onclick="moveAccount('${a.id}',1)">↓</button>
             ${a.permanent ? '' : `<button class="icon-btn" onclick="deleteItem('accounts','${a.id}')">🗑️</button>`}
           </div>
         </li>
       `).join('');
+    }
+
+    let _acctDragId = null;
+    function onAcctDragStart(e) {
+      const li = e.target.closest('li[data-acct-id]');
+      if (!li) return;
+      _acctDragId = li.getAttribute('data-acct-id');
+      e.dataTransfer.effectAllowed = 'move';
+      try { e.dataTransfer.setData('text/plain', _acctDragId); } catch (err) {}
+      li.style.opacity = '0.5';
+    }
+    function onAcctDragOver(e) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      const li = e.target.closest('li[data-acct-id]');
+      if (li) li.style.borderTop = '2px solid var(--accent)';
+    }
+    function onAcctDrop(e) {
+      e.preventDefault();
+      const li = e.target.closest('li[data-acct-id]');
+      document.querySelectorAll('#list-accounts li').forEach(x => { x.style.borderTop = ''; x.style.opacity = ''; });
+      if (!li || !_acctDragId) return;
+      const targetId = li.getAttribute('data-acct-id');
+      if (targetId === _acctDragId) return;
+      const from = state.accounts.findIndex(a => a.id === _acctDragId);
+      const to = state.accounts.findIndex(a => a.id === targetId);
+      if (from < 0 || to < 0) return;
+      const [row] = state.accounts.splice(from, 1);
+      state.accounts.splice(to, 0, row);
+      // Remember custom order (disable auto sort on next ensure)
+      state.accountOrderLocked = true;
+      save();
+    }
+    function onAcctDragEnd() {
+      document.querySelectorAll('#list-accounts li').forEach(x => { x.style.borderTop = ''; x.style.opacity = ''; });
+      _acctDragId = null;
+    }
+    function moveAccount(id, dir) {
+      const i = state.accounts.findIndex(a => a.id === id);
+      if (i < 0) return;
+      const j = i + dir;
+      if (j < 0 || j >= state.accounts.length) return;
+      const tmp = state.accounts[i];
+      state.accounts[i] = state.accounts[j];
+      state.accounts[j] = tmp;
+      state.accountOrderLocked = true;
+      save();
     }
 
     function quickUpdateAccount(id) {
@@ -1566,7 +1639,23 @@
       if (val === null) return;
       const n = Number(val);
       if (isNaN(n) || n < 0) { alert('Enter a valid amount'); return; }
-      a.balance = n;
+      a.balance = round2(n);
+      syncCushionGoalFromAccount();
+      save();
+    }
+
+    function quickUpdateGoalBalance(goalId) {
+      const g = (state.goals || []).find(x => x.id === goalId);
+      if (!g) return;
+      const acct = goalLinkedAccount(g);
+      const cur = acct ? (Number(acct.balance) || 0) : (Number(g.current) || 0);
+      const label = acct ? (g.name + ' (' + acct.name + ')') : g.name;
+      const val = prompt('Update balance for "' + label + '" ($):', cur);
+      if (val === null) return;
+      const n = Number(val);
+      if (isNaN(n) || n < 0) { alert('Enter a valid amount'); return; }
+      g.current = round2(n);
+      if (acct) acct.balance = round2(n);
       save();
     }
 
@@ -1851,9 +1940,10 @@
                 <div style="display:flex;justify-content:space-between;width:100%;">
                   <div class="item-info">
                     <div class="item-name">${escapeHtml(g.name)} ${g.isPrimary ? '<span class="badge green">Primary</span>' : ''}</div>
-                    <div class="item-meta">${money(cur)} of ${money(g.target)} · ${money(g.monthlyContribute != null ? g.monthlyContribute : 0)}/mo${g.isPrimary ? ' · Wedding Savings' : ''}</div>
+                    <div class="item-meta">${money(cur)} of ${money(g.target)} · ${money(g.monthlyContribute != null ? g.monthlyContribute : 0)}/mo${goalLinkedAccount(g) ? ' · ' + escapeHtml(goalLinkedAccount(g).name) : ''}</div>
                   </div>
                   <div class="item-actions">
+                    <button class="icon-btn" title="Update balance" onclick="quickUpdateGoalBalance('${g.id}')">💵</button>
                     <button class="icon-btn" onclick="editItem('goals','${g.id}')">✏️</button>
                     ${!g.isPrimary ? `<button class="icon-btn" onclick="deleteItem('goals','${g.id}')">🗑️</button>` : ''}
                   </div>
@@ -1911,18 +2001,27 @@
       onPaycheckTypeChange();
     }
 
+    function goalLinkedAccount(g) {
+      if (!g) return null;
+      if (g.accountId) return getAccountById(g.accountId);
+      if (g.isPrimary) return getAccountById('acct-misc');
+      if (/wedding/i.test(g.name || '')) return getAccountById('acct-savings');
+      return null;
+    }
+
     function cushionActualBalance() {
-      // Prefer Wedding Savings (goals account); fall back to primary goal.current
-      const sav = getAccountById('acct-savings');
+      // Savings goal tracks Misc Money
       const primary = state.goals.find(g => g.isPrimary) || state.goals[0];
-      if (sav) return Number(sav.balance) || 0;
+      const acct = goalLinkedAccount(primary) || getAccountById('acct-misc');
+      if (acct) return Number(acct.balance) || 0;
       return primary ? (Number(primary.current) || 0) : 0;
     }
 
     function syncCushionGoalFromAccount() {
-      const primary = state.goals.find(g => g.isPrimary) || state.goals[0];
-      const sav = getAccountById('acct-savings');
-      if (primary && sav) primary.current = Number(sav.balance) || 0;
+      (state.goals || []).forEach(g => {
+        const acct = goalLinkedAccount(g);
+        if (acct) g.current = Number(acct.balance) || 0;
+      });
     }
 
     function updateQuickStats() {
@@ -2002,7 +2101,7 @@
           </div>
         </div>
         <div class="summary-card" style="grid-column:1/-1;">
-          <div class="label">House + Baby cushion (Wedding Savings)</div>
+          <div class="label">Savings (Misc Money)</div>
           <div class="progress-wrap">
             <div class="progress-header"><span>${money(cushionNow)} of ${money(cushionTarget)}</span><span class="pct">${cushionPct}%</span></div>
             <div class="progress-bar"><div class="progress-fill ${cushionPct >= 100 ? '' : (cushionPct >= 50 ? 'sky' : 'amber')}" style="width:${cushionPct}%"></div></div>
@@ -2094,17 +2193,24 @@
           <p class="tip" style="margin-top:8px;">Due day helps Coming Up and paycheck planning set money aside before the payment is due.</p>
         `;
       } else if (key === 'goals') {
+        const linked = item ? goalLinkedAccount(item) : null;
+        const curVal = linked ? (Number(linked.balance) || 0) : (item ? item.current : 0);
+        const acctOpts = (state.accounts || []).map(a =>
+          `<option value="${a.id}" ${(item && item.accountId === a.id) || (!item && a.id === 'acct-misc') ? 'selected' : ''}>${escapeHtml(a.name)}</option>`
+        ).join('');
         fields = `
           <label>Name</label>
-          <input id="m-name" value="${item ? escapeHtml(item.name) : ''}" placeholder="e.g. Emergency Fund" ${item && item.isPrimary ? 'readonly' : ''} />
+          <input id="m-name" value="${item ? escapeHtml(item.name) : ''}" placeholder="e.g. Savings" />
           <label>Target amount ($)</label>
           <input id="m-target" type="number" inputmode="decimal" step="0.01" min="0" value="${item ? item.target : ''}" />
           <label>Current saved ($)</label>
-          <input id="m-current" type="number" inputmode="decimal" step="0.01" min="0" value="${item ? item.current : 0}" />
+          <input id="m-current" type="number" inputmode="decimal" step="0.01" min="0" value="${curVal}" />
           <label>Contribute per month ($)</label>
           <input id="m-monthly" type="number" inputmode="decimal" step="0.01" min="0" value="${item && item.monthlyContribute != null ? item.monthlyContribute : 200}" />
+          <label>Linked bank account</label>
+          <select id="m-goal-account">${acctOpts}</select>
           <p class="tip" style="margin-top:8px;">
-            Each paycheck only puts aside about half of this (you get paid twice a month). Leftover after bills goes to flex — not the whole cushion target.
+            Current saved updates the linked account too (Savings → Misc Money, Wedding → Wedding Savings).
           </p>
         `;
       } else if (key === 'income') {
@@ -2187,6 +2293,9 @@
         obj.target = Number(document.getElementById('m-target').value) || 0;
         obj.current = Number(document.getElementById('m-current').value) || 0;
         obj.monthlyContribute = Number(document.getElementById('m-monthly')?.value) || 0;
+        obj.accountId = document.getElementById('m-goal-account')?.value || 'acct-misc';
+        const linkedAcct = getAccountById(obj.accountId);
+        if (linkedAcct) linkedAcct.balance = round2(obj.current);
         if (editing.id) {
           const existing = state.goals.find(g => g.id === editing.id);
           if (existing && existing.isPrimary) obj.isPrimary = true;
@@ -2682,31 +2791,66 @@
           return;
         }
         if (line.kind === 'goal') {
-          const dest = routeForCategory('goals').to;
-          transfer(depositId, dest, amt);
           const g = (state.goals || []).find(x => x.id === line.id);
+          const dest = (g && g.accountId) || routeForCategory('goals').to || 'acct-misc';
+          transfer(depositId, dest, amt);
           if (g) g.current = round2((Number(g.current) || 0) + amt);
-          summary.push(money(amt) + ' → ' + (getAccountById(dest)?.name || 'Emergency/Savings') + (g ? ' (' + g.name + ')' : ''));
+          const destAcct = getAccountById(dest);
+          summary.push({ dest, destName: destAcct?.name || dest, amt, detail: g ? g.name : 'goal' });
           return;
         }
         if (line.kind === 'debt_min') {
-          // Stage only — do NOT mark paid or reduce debt until you tap ✅
-          const dest = routeForCategory('debt').to || depositId;
+          // Stay in Bills — autopay pulls from there
+          const dest = 'acct-bills';
           transfer(depositId, dest, amt);
-          summary.push(money(amt) + ' debt mins held in ' + (getAccountById(dest)?.name || 'account') + ' until you mark Paid');
+          summary.push({ dest, destName: getAccountById(dest)?.name || 'Bills', amt, detail: 'debt minimums (hold for autopay)' });
           return;
         }
         if (line.kind === 'extra_debt' && line.id) {
-          // Stage only — mark Paid (or pay in real bank) before reducing debt
-          const dest = routeForCategory('debt').to || depositId;
+          const dest = 'acct-bills';
           transfer(depositId, dest, amt);
           const d = (state.debts || []).find(x => x.id === line.id);
-          summary.push(money(amt) + ' extra for ' + (d?.name || 'debt') + ' held until Paid');
+          summary.push({ dest, destName: 'Bills', amt, detail: 'extra for ' + (d?.name || 'debt') });
           return;
+        }
+        // Other kinds already pushed strings — normalize below
+        if (typeof summary[summary.length - 1] === 'string') {
+          // leave as-is for legacy string pushes
         }
       });
 
-      // Monthly log: saved + debt paid this apply
+      // Rebuild summary as exact "move $X to Account" lines
+      const moveMap = {};
+      lastPlan.alloc.forEach(line => {
+        const amt = Number(line.amount) || 0;
+        if (amt <= 0) return;
+        let destId = depositId;
+        let detail = line.label || '';
+        if (line.kind === 'housing') destId = routeForCategory('housing').to;
+        else if (line.kind === 'bills') destId = routeForCategory('bills').to;
+        else if (line.kind === 'everyday') {
+          const cat = (state.everyday || []).find(e => e.id === line.id);
+          destId = (cat && cat.accountTo) || routeForCategory('everyday').to;
+        } else if (line.kind === 'leftover') destId = routeForCategory('leftover').to;
+        else if (line.kind === 'goal') {
+          const g = (state.goals || []).find(x => x.id === line.id);
+          destId = (g && g.accountId) || routeForCategory('goals').to;
+        } else if (line.kind === 'debt_min' || line.kind === 'extra_debt') destId = 'acct-bills';
+        if (!destId) destId = depositId;
+        if (!moveMap[destId]) moveMap[destId] = { amt: 0, details: [] };
+        moveMap[destId].amt = round2(moveMap[destId].amt + amt);
+        if (detail) moveMap[destId].details.push(detail + ' ' + money(amt));
+      });
+
+      const moveLines = Object.keys(moveMap).map(id => {
+        const acct = getAccountById(id);
+        const name = acct ? acct.name : id;
+        const m = moveMap[id];
+        const detailStr = m.details.length ? ' <span style="color:var(--muted);font-size:0.78rem;">(' + m.details.join(', ') + ')</span>' : '';
+        return `<div class="alloc-row"><div class="label">Move to <strong style="color:var(--text)">${escapeHtml(name)}</strong>${detailStr}</div><div class="amt">${money(m.amt)}</div></div>`;
+      }).join('');
+
+      // Monthly log
       let saved = 0, debtPaid = 0;
       lastPlan.alloc.forEach(line => {
         if (line.kind === 'goal') saved += Number(line.amount) || 0;
@@ -2716,15 +2860,17 @@
 
       save();
       lastPlan = null;
-      const lines = (state.accounts || []).map(a =>
+      const balLines = (state.accounts || []).map(a =>
         `<div class="alloc-row"><div class="label">${escapeHtml(a.name)}</div><div class="amt">${money(a.balance)}</div></div>`
       ).join('');
       document.getElementById('plan-result').innerHTML = `
         <div class="result-box good">
           <h3>Accounts updated</h3>
-          <p style="font-size:0.85rem;color:var(--muted);margin-bottom:10px;">Match these to your real bank. When you pay a bill, tap ✅ — it pulls from the routed account.</p>
-          ${lines}
-          ${summary.length ? `<p class="section-label">Moves this deposit</p><ul class="rec-list">${summary.map(s => '<li>' + escapeHtml(s) + '</li>').join('')}</ul>` : ''}
+          <p class="section-label">Move this much in your real bank</p>
+          ${moveLines || '<p class="empty">No transfers needed</p>'}
+          <p class="section-label" style="margin-top:12px;">Balances after apply</p>
+          ${balLines}
+          <p class="tip" style="margin-top:10px;">Debt mins stay in <strong>Bills</strong> for autopay. Tap ✅ when other payments actually go out.</p>
         </div>
       `;
       updateQuickStats();
