@@ -181,14 +181,14 @@
       background: none;
       border: none;
       color: var(--muted);
-      font-size: 0.62rem;
+      font-size: 0.58rem;
       display: flex;
       flex-direction: column;
       align-items: center;
       gap: 1px;
-      padding: 6px 4px;
+      padding: 6px 2px;
       cursor: pointer;
-      min-width: 48px;
+      min-width: 0;
       flex: 1;
       border-radius: 10px;
     }
@@ -405,9 +405,6 @@
       <button data-tab="budget" onclick="switchTab('budget')">
         <span class="icon">🏠</span> Budget
       </button>
-      <button data-tab="debts" onclick="switchTab('debts')">
-        <span class="icon">💳</span> Debts
-      </button>
       <button data-tab="goals" onclick="switchTab('goals')">
         <span class="icon">🎯</span> Goals
       </button>
@@ -416,6 +413,9 @@
       </button>
       <button data-tab="pay" onclick="switchTab('pay')">
         <span class="icon">🧮</span> Pay
+      </button>
+      <button data-tab="sim" onclick="switchTab('sim')">
+        <span class="icon">🔮</span> Sim
       </button>
       <button data-tab="settings" onclick="switchTab('settings')">
         <span class="icon">⚙️</span> More
@@ -486,6 +486,41 @@
     </div>
 
     <!-- ========== PAY CALC TAB ========== -->
+    <!-- ========== SIMULATE TAB ========== -->
+    <div id="tab-sim" class="hidden">
+      <div class="card">
+        <h2><span class="dot" style="background:var(--purple)"></span> What-if simulator</h2>
+        <p style="font-size:0.8rem;color:var(--muted);margin-bottom:10px;">
+          Project paychecks and savings forward. <strong>Does not change</strong> your real account balances — sandbox only.
+        </p>
+        <div class="section-label">Starting balances (sandbox)</div>
+        <p class="tip">Pre-filled from today. Edit freely — live accounts stay untouched.</p>
+        <div id="sim-start-balances"></div>
+        <button class="btn secondary" onclick="simLoadFromLive()">Reload from live accounts</button>
+
+        <div class="section-label">Pay assumptions</div>
+        <label>Typical main check net (10th) $</label>
+        <input type="number" id="sim-main-net" inputmode="decimal" step="0.01" min="0" placeholder="e.g. 8500" />
+        <label>Advance (25th) $</label>
+        <input type="number" id="sim-advance" inputmode="decimal" step="0.01" min="0" value="3000" />
+        <label>Months to project</label>
+        <input type="number" id="sim-months" inputmode="numeric" min="1" max="60" value="6" />
+
+        <div class="section-label">Monthly living costs</div>
+        <p class="tip">From Budget: housing + bills + debt minimums. Edit if you want a different assumption.</p>
+        <label>Housing + bills + debt mins $</label>
+        <input type="number" id="sim-fixed" inputmode="decimal" step="0.01" min="0" />
+        <label>Allowance total per check (×2 per month) $</label>
+        <input type="number" id="sim-allowance" inputmode="decimal" step="0.01" min="0" value="750" />
+        <p class="tip" style="margin-top:10px;">
+          <strong>Order each month:</strong> 1) Living costs → 2) All leftover to goals by priority (#1 first until target, then #2…) → 3) Anything left to debt (after mins). No free sliders.
+        </p>
+
+        <button class="btn" onclick="runSimulation()">Run simulation</button>
+      </div>
+      <div id="sim-result" class="hidden"></div>
+    </div>
+
     <div id="tab-pay" class="hidden">
       <div class="card">
         <h2><span class="dot" style="background:var(--accent)"></span> Firefighter paycheck (CCC / 56-hr)</h2>
@@ -644,13 +679,9 @@
         <ul class="item-list" id="list-everyday"></ul>
         <button class="btn secondary small" onclick="openModal('everyday')">+ Add Category</button>
       </div>
-    </div>
-
-    <!-- ========== DEBTS TAB ========== -->
-    <div id="tab-debts" class="hidden">
       <div class="card">
         <h2><span class="dot" style="background:var(--rose)"></span> Debts</h2>
-        <p style="font-size:0.8rem;color:var(--muted);margin-bottom:10px;">Credit cards are prioritized after the cushion is built. Minimums are always paid first.</p>
+        <p style="font-size:0.8rem;color:var(--muted);margin-bottom:10px;">Credit cards first after savings goals. Minimums always paid. Combined here with Budget so the top tabs fit on one row.</p>
         <ul class="item-list" id="list-debts"></ul>
         <button class="btn secondary small" onclick="openModal('debts')">+ Add Debt</button>
       </div>
@@ -661,7 +692,7 @@
       <div class="card">
         <h2><span class="dot" style="background:var(--green)"></span> Cash Cushion & Goals</h2>
         <p style="font-size:0.8rem;color:var(--muted);margin-bottom:10px;">
-          Set a <strong>monthly contribution</strong> for each goal. Paychecks only set aside that amount (split across the 10th & 25th)—not everything left over.
+          Use <strong>↑↓</strong> to set priority (#1 is funded first in Sim cascade). Monthly contribution is split across the 10th &amp; 25th.
         </p>
         <ul class="item-list" id="list-goals"></ul>
         <button class="btn secondary small" onclick="openModal('goals')">+ Add Goal</button>
@@ -962,7 +993,7 @@
 
     // ========== TABS ==========
     function switchTab(name) {
-      ['allocate','audit','budget','debts','goals','log','pay','settings'].forEach(t => {
+      ['allocate','audit','budget','goals','log','pay','sim','settings'].forEach(t => {
         const el = document.getElementById('tab-' + t);
         if (el) el.classList.toggle('hidden', t !== name);
       });
@@ -975,6 +1006,564 @@
         renderUnexpectedRecent();
       }
       if (name === 'log') renderMonthlyLog();
+      if (name === 'sim') prepareSimForm();
+    }
+
+    // ========== SIMULATOR (sandbox — never writes state.accounts) ==========
+    function prepareSimForm() {
+      const box = document.getElementById('sim-start-balances');
+      if (!box) return;
+      ensurePermanentAccounts(state);
+      const accts = state.accounts || [];
+      box.innerHTML = accts.map(a => `
+        <label>${escapeHtml(a.name)} ($)</label>
+        <input type="number" class="sim-bal" data-id="${a.id}" inputmode="decimal" step="0.01"
+          value="${Number(a.balance) || 0}" />
+      `).join('');
+
+      const fixed = sum(state.housing || [], 'amount') + sum(state.bills || [], 'amount') + sum(state.debts || [], 'minPayment');
+      const fixedEl = document.getElementById('sim-fixed');
+      if (fixedEl && !fixedEl.dataset.touched) fixedEl.value = fixed.toFixed(2);
+      if (fixedEl) fixedEl.onchange = () => { fixedEl.dataset.touched = '1'; };
+
+      const allow = sum(state.everyday || [], 'amount');
+      const allowEl = document.getElementById('sim-allowance');
+      if (allowEl && !allowEl.dataset.touched) allowEl.value = (allow || 750).toFixed(2);
+      if (allowEl) allowEl.onchange = () => { allowEl.dataset.touched = '1'; };
+
+      const advEl = document.getElementById('sim-advance');
+      if (advEl && !advEl.dataset.touched) {
+        advEl.value = (state.paySchedule && state.paySchedule.advanceAmount) || 3000;
+        advEl.onchange = () => { advEl.dataset.touched = '1'; };
+      }
+
+      const mainEl = document.getElementById('sim-main-net');
+      if (mainEl && !mainEl.value && window._lastPayNet) {
+        mainEl.value = Number(window._lastPayNet).toFixed(2);
+      }
+    }
+
+    function simLoadFromLive() {
+      document.querySelectorAll('#sim-fixed, #sim-allowance, #sim-advance').forEach(el => {
+        delete el.dataset.touched;
+      });
+      prepareSimForm();
+      const res = document.getElementById('sim-result');
+      if (res) res.classList.add('hidden');
+    }
+
+    let lastSim = null; // sandbox plan + slider buckets
+
+    function runSimulation() {
+      const mainNet = Number(document.getElementById('sim-main-net')?.value) || 0;
+      const advance = Number(document.getElementById('sim-advance')?.value) || 0;
+      const months = Math.min(60, Math.max(1, parseInt(document.getElementById('sim-months')?.value, 10) || 6));
+      const fixedMo = Number(document.getElementById('sim-fixed')?.value) || 0;
+      const allowPerCheck = Number(document.getElementById('sim-allowance')?.value) || 0;
+
+      if (mainNet <= 0 && advance <= 0) {
+        alert('Enter a typical main check net (and/or advance).');
+        return;
+      }
+
+      const startBal = {};
+      document.querySelectorAll('.sim-bal').forEach(inp => {
+        startBal[inp.dataset.id] = Number(inp.value) || 0;
+      });
+      ['acct-bills','acct-misc','acct-savings','acct-trent','acct-bri','acct-mortgage','acct-spending','acct-equip'].forEach(id => {
+        if (startBal[id] == null) startBal[id] = 0;
+      });
+
+      syncCushionGoalFromAccount();
+      const goalsMeta = (state.goals || []).map(g => {
+        const acct = goalLinkedAccount(g);
+        const current = acct ? (Number(acct.balance) || 0) : (Number(g.current) || 0);
+        return {
+          id: g.id,
+          name: g.name,
+          target: Number(g.target) || 0,
+          current,
+          accountId: (acct && acct.id) || g.accountId || null,
+          isPrimary: !!g.isPrimary
+        };
+      });
+
+      const monthlyIncome = round2(advance + mainNet);
+      const allowMo = allowPerCheck * 2;
+      const living = round2(fixedMo + allowMo);
+      const residual = round2(Math.max(0, monthlyIncome - living));
+
+      lastSim = {
+        mainNet, advance, months, fixedMo, allowPerCheck, allowMo, living, residual,
+        monthlyIncome,
+        startBal: { ...startBal },
+        debtMins: sum(state.debts || [], 'minPayment'),
+        debtsMeta: (state.debts || []).map(d => ({
+          id: d.id,
+          name: d.name,
+          type: d.type,
+          balance: Number(d.balance) || 0,
+          minPayment: Number(d.minPayment) || 0,
+          rate: Number(d.rate) || 0,
+          hasInterest: d.hasInterest === true || (d.hasInterest !== false && Number(d.rate) > 0)
+        })),
+        goalsMeta
+      };
+
+      renderSimResult();
+    }
+
+    function onSimSlider(idx, value) {
+      if (!lastSim || !lastSim.buckets[idx]) return;
+      const b = lastSim.buckets[idx];
+      if (b.locked) return;
+      // Snap to $50 steps (range or typed)
+      let newVal = Math.max(0, Math.min(lastSim.monthlyIncome, Number(value) || 0));
+      newVal = Math.round(newVal / 50) * 50;
+      newVal = Math.max(0, Math.min(lastSim.monthlyIncome, newVal));
+      const oldVal = Number(b.amount) || 0;
+      const delta = round2(newVal - oldVal);
+      b.amount = round2(newVal);
+
+      // Absorb delta into leftover (or first non-locked other)
+      let leftoverIdx = lastSim.buckets.findIndex((x, i) => i !== idx && x.key === 'leftover');
+      if (leftoverIdx < 0) leftoverIdx = lastSim.buckets.findIndex((x, i) => i !== idx && !x.locked);
+      if (leftoverIdx >= 0) {
+        lastSim.buckets[leftoverIdx].amount = round2(Math.max(0, (Number(lastSim.buckets[leftoverIdx].amount) || 0) - delta));
+      }
+
+      // Drift fix so adjustable buckets + locked ≈ monthly income
+      const lockedSum = lastSim.buckets.filter(x => x.locked).reduce((s, x) => s + (Number(x.amount) || 0), 0);
+      const adjSum = lastSim.buckets.filter(x => !x.locked).reduce((s, x) => s + (Number(x.amount) || 0), 0);
+      const targetAdj = round2(Math.max(0, lastSim.monthlyIncome - lockedSum));
+      const drift = round2(targetAdj - adjSum);
+      if (Math.abs(drift) > 0.01 && leftoverIdx >= 0) {
+        lastSim.buckets[leftoverIdx].amount = round2(Math.max(0, (Number(lastSim.buckets[leftoverIdx].amount) || 0) + drift));
+      }
+
+      // Sync number inputs / bars without full rebuild of outer shell
+      lastSim.buckets.forEach((x, i) => {
+        const num = document.getElementById('sim-num-' + i);
+        const range = document.getElementById('sim-range-' + i);
+        const pctEl = document.getElementById('sim-pct-' + i);
+        const amtEl = document.getElementById('sim-amt-' + i);
+        const bar = document.getElementById('sim-bar-' + i);
+        const pct = lastSim.monthlyIncome > 0 ? Math.min(100, Math.round((x.amount / lastSim.monthlyIncome) * 1000) / 10) : 0;
+        if (num && document.activeElement !== num) num.value = Number(x.amount).toFixed(2);
+        if (range && document.activeElement !== range) range.value = Math.round((Number(x.amount) || 0) / 50) * 50;
+        if (pctEl) pctEl.textContent = pct + '% of monthly pay';
+        if (amtEl) amtEl.textContent = money(x.amount);
+        if (bar) bar.style.width = pct + '%';
+      });
+      const totalEl = document.getElementById('sim-bucket-total');
+      if (totalEl) {
+        const t = round2(lastSim.buckets.reduce((s, x) => s + (Number(x.amount) || 0), 0));
+        totalEl.textContent = money(t);
+      }
+      // Recompute month-by-month table only
+      const proj = computeSimProjection();
+      const table = document.getElementById('sim-month-table');
+      if (table) table.innerHTML = buildSimMonthTableHtml(proj);
+      const summary = document.getElementById('sim-summary-grid');
+      if (summary) summary.innerHTML = buildSimSummaryHtml(proj);
+      const goalsEta = document.getElementById('sim-goals-eta');
+      if (goalsEta) goalsEta.innerHTML = buildSimGoalsEtaHtml(proj);
+      const debtEta = document.getElementById('sim-debt-eta');
+      if (debtEta) debtEta.innerHTML = buildSimDebtEtaHtml(proj);
+      const ends = document.getElementById('sim-ending-bals');
+      if (ends) ends.innerHTML = buildSimEndingHtml(proj);
+    }
+
+    function computeSimProjection() {
+      if (!lastSim) return null;
+      const fixedMo = lastSim.fixedMo || 0;
+      const allowMo = lastSim.allowMo || 0;
+      const { months, advance, mainNet, startBal, goalsMeta, debtsMeta } = lastSim;
+
+      // goal balances sandbox
+      const goalBal = {};
+      (goalsMeta || []).forEach(g => { goalBal[g.id] = g.current; });
+
+      // Per-debt sandbox (interest-aware)
+      const debtBal = (debtsMeta || []).map(d => ({ ...d, balance: d.balance }));
+      // Payoff order: credit cards first, then highest rate, then balance
+      const debtPayOrder = () => [...debtBal].filter(d => d.balance > 0.01).sort((a, b) => {
+        if (a.type === 'credit' && b.type !== 'credit') return -1;
+        if (b.type === 'credit' && a.type !== 'credit') return 1;
+        return (b.rate || 0) - (a.rate || 0) || (b.balance - a.balance);
+      });
+
+      const goalOrder = [...(goalsMeta || [])];
+
+      const bal = { ...startBal };
+      let totalIncome = 0, totalSaved = 0, totalDebtPaid = 0, totalInterest = 0;
+      const rows = [];
+      const goalHitMonth = {};
+      const goalReceived = {};
+      const debtHitMonth = {};
+      (goalsMeta || []).forEach(g => { goalReceived[g.id] = 0; });
+
+      for (let m = 1; m <= months; m++) {
+        // Accrue interest first (monthly APR/12)
+        debtBal.forEach(d => {
+          if (d.balance <= 0.01) { d.balance = 0; return; }
+          if (d.hasInterest && d.rate > 0) {
+            const interest = round2(d.balance * (d.rate / 100 / 12));
+            d.balance = round2(d.balance + interest);
+            totalInterest = round2(totalInterest + interest);
+          }
+        });
+
+        bal['acct-bills'] = round2((bal['acct-bills'] || 0) + advance + mainNet);
+        totalIncome = round2(totalIncome + advance + mainNet);
+
+        // Fixed costs (housing + bills portion of fixedMo excluding we still take full fixedMo from bills)
+        const fixedPay = Math.min(fixedMo, bal['acct-bills'] || 0);
+        bal['acct-bills'] = round2((bal['acct-bills'] || 0) - fixedPay);
+
+        // Apply each debt's minimum (from the fixed budget conceptually; still reduce principal)
+        let minsThisMo = 0;
+        debtBal.forEach(d => {
+          if (d.balance <= 0.01) return;
+          const pay = Math.min(d.minPayment || 0, d.balance);
+          d.balance = round2(Math.max(0, d.balance - pay));
+          minsThisMo = round2(minsThisMo + pay);
+          totalDebtPaid = round2(totalDebtPaid + pay);
+          if (d.balance <= 0.01 && debtHitMonth[d.id] == null) debtHitMonth[d.id] = m;
+        });
+
+        const allowPay = Math.min(allowMo, bal['acct-bills'] || 0);
+        bal['acct-bills'] = round2((bal['acct-bills'] || 0) - allowPay);
+
+        // Waterfall residual after living: ALL leftover → goals by priority, then debt
+        let residual = round2(Math.max(0, (bal['acct-bills'] || 0)));
+        // residual is what's left in bills after fixed+allow; use it for goals then debt
+        let pool = residual;
+
+        let savedThisMo = 0;
+        goalOrder.forEach(g => {
+          if (pool <= 0.005) return;
+          const cur = goalBal[g.id] || 0;
+          let room;
+          if (g.target > 0) {
+            room = Math.max(0, g.target - cur);
+            if (room <= 0.005) return;
+          } else {
+            // No target: skip until all targeted goals done, then could absorb — leave for debt instead
+            return;
+          }
+          const pay = round2(Math.min(pool, room));
+          if (pay <= 0) return;
+          bal['acct-bills'] = round2((bal['acct-bills'] || 0) - pay);
+          goalBal[g.id] = round2(cur + pay);
+          if (g.accountId && bal[g.accountId] != null) {
+            bal[g.accountId] = round2((bal[g.accountId] || 0) + pay);
+          }
+          pool = round2(pool - pay);
+          savedThisMo = round2(savedThisMo + pay);
+          totalSaved = round2(totalSaved + pay);
+          goalReceived[g.id] = round2((goalReceived[g.id] || 0) + pay);
+          if (goalHitMonth[g.id] == null && goalBal[g.id] >= g.target - 0.01) {
+            goalHitMonth[g.id] = m;
+          }
+        });
+
+        // Everything still left after goals → extra debt (avalanche)
+        let extraLeft = pool;
+        let extraPaid = 0;
+        debtPayOrder().forEach(d => {
+          if (extraLeft <= 0.01) return;
+          const pay = Math.min(extraLeft, d.balance);
+          if (pay <= 0) return;
+          d.balance = round2(Math.max(0, d.balance - pay));
+          extraLeft = round2(extraLeft - pay);
+          extraPaid = round2(extraPaid + pay);
+          totalDebtPaid = round2(totalDebtPaid + pay);
+          bal['acct-bills'] = round2((bal['acct-bills'] || 0) - pay);
+          if (d.balance <= 0.01 && debtHitMonth[d.id] == null) debtHitMonth[d.id] = m;
+        });
+        // If debts all paid, residual stays in Bills as buffer
+
+        const totalDebtNow = round2(debtBal.reduce((s, d) => s + (d.balance || 0), 0));
+
+        rows.push({
+          month: m,
+          income: advance + mainNet,
+          bills: bal['acct-bills'],
+          debt: totalDebtNow,
+          savedThisMo,
+          debtPaidThisMo: round2(minsThisMo + extraPaid),
+          fixedThisMo: fixedPay,
+          allowThisMo: allowPay,
+          goalSnapshot: { ...goalBal }
+        });
+      }
+
+      const totalDebt = round2(debtBal.reduce((s, d) => s + (d.balance || 0), 0));
+
+      const monthlyResidual = round2(Math.max(0, lastSim.monthlyIncome - fixedMo - allowMo));
+
+      // Debt payoff ETAs — use residual after goals as eventual extra once goals complete
+      const debtETAs = (debtsMeta || []).map(orig => {
+        const end = debtBal.find(d => d.id === orig.id);
+        const endBal = end ? end.balance : 0;
+        const hasInt = !!(orig.hasInterest && orig.rate > 0);
+        let monthsNeeded = debtHitMonth[orig.id] != null ? debtHitMonth[orig.id] : null;
+        let status = '';
+        if (orig.balance <= 0) {
+          monthsNeeded = 0;
+          status = 'Already paid off';
+        } else if (monthsNeeded != null) {
+          status = 'Paid off in month ' + monthsNeeded + ' of this sim';
+        } else {
+          let balD = orig.balance;
+          const minP = orig.minPayment || 0;
+          let mo = 0;
+          const maxMo = 600;
+          let stuck = false;
+          while (mo < maxMo && balD > 0.01) {
+            mo++;
+            if (hasInt) {
+              const interest = balD * (orig.rate / 100 / 12);
+              balD = round2(balD + interest);
+              if (minP + monthlyResidual < interest) { stuck = true; break; }
+            }
+            const pay = Math.min(balD, minP + monthlyResidual);
+            if (pay <= 0.01) { stuck = true; break; }
+            balD = round2(Math.max(0, balD - pay));
+          }
+          if (stuck) {
+            monthsNeeded = null;
+            status = hasInt ? 'May not beat interest at this income — check mins/APR' : 'Need higher payment';
+          } else if (mo >= maxMo) {
+            monthsNeeded = null;
+            status = 'Not paid off within ~50 years at current rates';
+          } else {
+            monthsNeeded = mo;
+            status = '~' + mo + ' mo' + (hasInt ? ' @ ' + orig.rate + '% APR' : ' (no interest)');
+          }
+        }
+        return {
+          id: orig.id,
+          name: orig.name,
+          start: orig.balance,
+          endBal,
+          rate: orig.rate,
+          hasInterest: hasInt,
+          monthsNeeded,
+          status
+        };
+      });
+
+      const goalETAs = (goalsMeta || []).map(g => {
+        const current = g.current;
+        const target = g.target;
+        const endBal = goalBal[g.id] || 0;
+        let monthsNeeded = null;
+        let status = '';
+        if (target <= 0) {
+          status = 'No target — skipped (residual goes to next goal / debt)';
+        } else if (current >= target) {
+          monthsNeeded = 0;
+          status = 'Already met — residual cascades to next';
+        } else if (goalHitMonth[g.id] != null) {
+          monthsNeeded = goalHitMonth[g.id];
+          status = 'Hit in month ' + monthsNeeded + ' of this sim';
+        } else if (monthlyResidual <= 0) {
+          status = 'No leftover after living costs';
+        } else {
+          let simBal = {};
+          (goalsMeta || []).forEach(x => { simBal[x.id] = x.current; });
+          let mo = 0;
+          const maxMo = 240;
+          while (mo < maxMo && (simBal[g.id] || 0) < target) {
+            mo++;
+            let p = monthlyResidual;
+            goalOrder.forEach(og => {
+              if (p <= 0) return;
+              const c = simBal[og.id] || 0;
+              if (!(og.target > 0) || c >= og.target) return;
+              const room = Math.max(0, og.target - c);
+              const pay = Math.min(p, room);
+              simBal[og.id] = round2(c + pay);
+              p = round2(p - pay);
+            });
+          }
+          monthsNeeded = mo >= maxMo ? null : mo;
+          status = monthsNeeded != null
+            ? '~' + monthsNeeded + ' months (living → goals by priority → debt)'
+            : 'Not reached in 20 years at this income';
+        }
+        return {
+          id: g.id,
+          name: g.name,
+          target,
+          current,
+          endBal,
+          monthly: 0,
+          received: goalReceived[g.id] || 0,
+          monthsNeeded,
+          status,
+          pct: target > 0 ? Math.min(100, Math.round((endBal / target) * 1000) / 10) : 0
+        };
+      });
+
+      return {
+        rows, bal, goalBal, debtBal, debtETAs,
+        totalIncome, totalSaved, totalDebtPaid, totalDebt, totalInterest,
+        goalETAs, months
+      };
+    }
+
+    function buildSimSummaryHtml(proj) {
+      if (!proj) return '';
+      return `
+        <div class="summary-card">
+          <div class="label">Income in period</div>
+          <div class="value">${money(proj.totalIncome)}</div>
+        </div>
+        <div class="summary-card">
+          <div class="label">Toward goals</div>
+          <div class="value" style="color:var(--green)">${money(proj.totalSaved)}</div>
+        </div>
+        <div class="summary-card">
+          <div class="label">Debt paid (sim)</div>
+          <div class="value" style="color:var(--rose)">${money(proj.totalDebtPaid)}</div>
+        </div>
+        <div class="summary-card">
+          <div class="label">Debt remaining</div>
+          <div class="value" style="color:var(--rose)">${money(proj.totalDebt)}</div>
+        </div>
+        <div class="summary-card">
+          <div class="label">Interest accrued (sim)</div>
+          <div class="value" style="color:var(--amber)">${money(proj.totalInterest || 0)}</div>
+        </div>
+      `;
+    }
+
+    function buildSimDebtEtaHtml(proj) {
+      if (!proj || !proj.debtETAs || !proj.debtETAs.length) {
+        return '<p class="empty">No debts in this sim.</p>';
+      }
+      return proj.debtETAs.map(d => `
+        <div style="padding:10px 0;border-bottom:1px solid rgba(51,65,85,0.5);">
+          <div class="alloc-row" style="border:none;padding:0;">
+            <div class="label">
+              <strong style="color:var(--text)">${escapeHtml(d.name)}</strong>
+              ${d.hasInterest ? '<span class="badge rose">' + d.rate + '% APR</span>' : '<span class="badge green">0%</span>'}
+            </div>
+            <div class="amt">${money(d.endBal)}</div>
+          </div>
+          <p style="font-size:0.75rem;color:var(--muted);margin-top:4px;">
+            Start ${money(d.start)} · ${escapeHtml(d.status)}
+            ${d.monthsNeeded != null && d.monthsNeeded > 0 ? ' · <strong style="color:var(--text)">~' + d.monthsNeeded + ' mo</strong>' : ''}
+          </p>
+        </div>
+      `).join('');
+    }
+
+    function buildSimGoalsEtaHtml(proj) {
+      if (!proj || !proj.goalETAs || !proj.goalETAs.length) {
+        return '<p class="empty">Add goals on the Goals tab to see timelines here.</p>';
+      }
+      return proj.goalETAs.map(g => `
+        <div style="padding:10px 0;border-bottom:1px solid rgba(51,65,85,0.5);">
+          <div class="alloc-row" style="border:none;padding:0;">
+            <div class="label"><strong style="color:var(--text)">${escapeHtml(g.name)}</strong></div>
+            <div class="amt">${money(g.endBal)}${g.target > 0 ? ' / ' + money(g.target) : ''}</div>
+          </div>
+          <div class="progress-wrap">
+            <div class="progress-header">
+              <span>${g.status}</span>
+              <span class="pct">${g.pct}%</span>
+            </div>
+            <div class="progress-bar"><div class="progress-fill ${g.pct >= 100 ? '' : (g.pct >= 50 ? 'sky' : 'amber')}" style="width:${g.pct}%"></div></div>
+          </div>
+          <p style="font-size:0.75rem;color:var(--muted);margin-top:4px;">
+            Funded ${money(g.received)} in sim · starts ${money(g.current)}
+            ${g.monthsNeeded != null && g.monthsNeeded > 0 ? ' · <strong style="color:var(--text)">~' + g.monthsNeeded + ' mo</strong> to target' : ''}
+          </p>
+        </div>
+      `).join('');
+    }
+
+    function buildSimMonthTableHtml(proj) {
+      if (!proj) return '';
+      const goalNames = (lastSim.goalsMeta || []).map(g => g.name);
+      return proj.rows.map(r => {
+        const goalLine = (lastSim.goalsMeta || []).map(g => {
+          const v = r.goalSnapshot && r.goalSnapshot[g.id];
+          return escapeHtml(g.name) + ' ' + money(v || 0);
+        }).join(' · ');
+        return `
+        <div class="alloc-row" style="align-items:flex-start;">
+          <div class="label">
+            <strong style="color:var(--text)">Month ${r.month}</strong>
+            <div style="font-size:0.75rem;color:var(--muted);">
+              In ${money(r.income)} · fixed ${money(r.fixedThisMo)} · allow ${money(r.allowThisMo)} ·
+              goals ${money(r.savedThisMo)} · debt −${money(r.debtPaidThisMo)}
+            </div>
+            ${goalLine ? `<div style="font-size:0.72rem;color:var(--muted);margin-top:2px;">${goalLine}</div>` : ''}
+          </div>
+          <div class="amt" style="text-align:right;font-size:0.85rem;">
+            <div style="color:var(--rose)">Debt ${money(r.debt)}</div>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    function buildSimEndingHtml(proj) {
+      if (!proj) return '';
+      return Object.keys(proj.bal).map(id => {
+        const a = getAccountById(id);
+        const name = a ? a.name : id;
+        return `<div class="alloc-row"><div class="label">${escapeHtml(name)}</div><div class="amt">${money(proj.bal[id])}</div></div>`;
+      }).join('');
+    }
+
+    function renderSimResult() {
+      if (!lastSim) return;
+      const proj = computeSimProjection();
+      const income = lastSim.monthlyIncome;
+      const living = lastSim.living || 0;
+      const residual = lastSim.residual || 0;
+      const el = document.getElementById('sim-result');
+      if (!el) return;
+      el.classList.remove('hidden');
+
+      const goalLines = (lastSim.goalsMeta || []).map((g, i) =>
+        `<div class="alloc-row"><div class="label"><span class="badge ${i === 0 ? 'green' : 'purple'}">#${i + 1}</span> ${escapeHtml(g.name)}${g.target > 0 ? ' → ' + money(g.target) : ''}</div><div class="amt" style="color:var(--muted)">until target</div></div>`
+      ).join('');
+
+      el.innerHTML = `
+        <div class="result-box good">
+          <h3>Simulation · ${lastSim.months} month${lastSim.months > 1 ? 's' : ''}</h3>
+          <p style="font-size:0.78rem;color:var(--muted);margin-bottom:8px;">
+            Sandbox only. Each month uses this waterfall — amounts never exceed income.
+          </p>
+          <p class="section-label">Monthly waterfall (${money(income)} income)</p>
+          <div class="alloc-row"><div class="label"><span class="badge amber">1</span> Living (housing + bills + debt mins + allowance)</div><div class="amt">${money(living)}</div></div>
+          <div class="progress-wrap"><div class="progress-bar"><div class="progress-fill amber" style="width:${income > 0 ? Math.min(100, living / income * 100) : 0}%"></div></div></div>
+          <div class="alloc-row"><div class="label"><span class="badge green">2</span> Leftover → goals by priority</div><div class="amt" style="color:var(--green)">${money(residual)}</div></div>
+          ${goalLines || '<p class="empty">No goals — residual goes to debt</p>'}
+          <div class="alloc-row"><div class="label"><span class="badge rose">3</span> After goals → extra to debt</div><div class="amt" style="color:var(--rose)">remainder</div></div>
+          <div class="total-line"><span>Income check</span><span>${money(income)} = ${money(living)} living + ${money(residual)} free</span></div>
+          ${living > income ? '<p class="tip bad">Living costs exceed monthly income — sim will show shortfalls.</p>' : ''}
+
+          <div class="summary-grid" id="sim-summary-grid" style="margin-top:14px;">
+            ${buildSimSummaryHtml(proj)}
+          </div>
+          <p class="section-label">Goal timelines</p>
+          <div id="sim-goals-eta">${buildSimGoalsEtaHtml(proj)}</div>
+          <p class="section-label">Debt payoff (with interest if on)</p>
+          <div id="sim-debt-eta">${buildSimDebtEtaHtml(proj)}</div>
+          <p class="section-label">Month by month</p>
+          <div id="sim-month-table">${buildSimMonthTableHtml(proj)}</div>
+          <p class="section-label">Ending sandbox balances</p>
+          <div id="sim-ending-bals">${buildSimEndingHtml(proj)}</div>
+        </div>
+      `;
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
     function calculatePaycheck() {
@@ -1740,6 +2329,19 @@
       save();
     }
 
+    function moveGoal(id, dir) {
+      const i = (state.goals || []).findIndex(g => g.id === id);
+      if (i < 0) return;
+      const j = i + dir;
+      if (j < 0 || j >= state.goals.length) return;
+      const tmp = state.goals[i];
+      state.goals[i] = state.goals[j];
+      state.goals[j] = tmp;
+      // Refresh priority numbers
+      state.goals.forEach((g, idx) => { g.priority = idx + 1; });
+      save();
+    }
+
     function quickUpdateGoalBalance(goalId) {
       const g = (state.goals || []).find(x => x.id === goalId);
       if (!g) return;
@@ -2001,14 +2603,18 @@
           dEl.innerHTML = state.debts.map(d => {
             const paid = isPaidThisPeriod(d);
             const due = d.dueDay ? nextDueDate(d.dueDay) : null;
+            const hasInt = d.hasInterest !== false && (Number(d.rate) > 0 || d.hasInterest === true);
             let meta = 'Balance ' + money(d.balance) + ' · Min ' + money(d.minPayment);
-            if (d.rate) meta += ' · ' + d.rate + '%';
+            if (hasInt && d.rate) meta += ' · ' + d.rate + '% APR';
+            else if (hasInt) meta += ' · interest on (set APR)';
+            else meta += ' · no interest';
             if (d.dueDay) meta += ' · due ' + d.dueDay + (due ? ' (' + formatShortDate(due) + ')' : '');
             return `
             <li class="item" style="${paid ? 'opacity:0.55;' : ''}">
               <div class="item-info">
                 <div class="item-name">${paid ? '✓ ' : ''}${escapeHtml(d.name)}
                   <span class="badge ${d.type === 'credit' ? 'rose' : 'amber'}">${d.type === 'credit' ? 'Credit Card' : 'Other Debt'}</span>
+                  ${hasInt ? '<span class="badge rose">Interest</span>' : '<span class="badge green">0%</span>'}
                   ${paid ? '<span class="badge green">Min paid</span>' : ''}
                 </div>
                 <div class="item-meta">${meta}</div>
@@ -2023,25 +2629,32 @@
         }
       }
 
-      // Goals special
+      // Goals special (list order = priority)
       const gEl = document.getElementById('list-goals');
       if (gEl) {
         if (!state.goals.length) {
           gEl.innerHTML = '<li class="empty">No goals yet</li>';
         } else {
           syncCushionGoalFromAccount();
-          gEl.innerHTML = state.goals.map(g => {
+          gEl.innerHTML = state.goals.map((g, idx) => {
             const cur = g.isPrimary ? cushionActualBalance() : (Number(g.current) || 0);
             const pct = g.target > 0 ? Math.min(100, Math.round((cur / g.target) * 1000) / 10) : 0;
             const fillClass = pct >= 100 ? '' : (pct >= 50 ? 'sky' : (pct >= 25 ? 'amber' : 'rose'));
+            const pri = idx + 1;
             return `
               <li class="item" style="flex-direction:column;align-items:stretch;">
                 <div style="display:flex;justify-content:space-between;width:100%;">
                   <div class="item-info">
-                    <div class="item-name">${escapeHtml(g.name)} ${g.isPrimary ? '<span class="badge green">Primary</span>' : ''}</div>
+                    <div class="item-name">
+                      <span class="badge ${pri === 1 ? 'green' : 'sky'}">#${pri}</span>
+                      ${escapeHtml(g.name)}
+                      ${g.isPrimary ? '<span class="badge green">Primary</span>' : ''}
+                    </div>
                     <div class="item-meta">${money(cur)} of ${money(g.target)} · ${money(g.monthlyContribute != null ? g.monthlyContribute : 0)}/mo${goalLinkedAccount(g) ? ' · ' + escapeHtml(goalLinkedAccount(g).name) : ''}</div>
                   </div>
                   <div class="item-actions">
+                    <button class="icon-btn" title="Higher priority" onclick="moveGoal('${g.id}',-1)">↑</button>
+                    <button class="icon-btn" title="Lower priority" onclick="moveGoal('${g.id}',1)">↓</button>
                     <button class="icon-btn" title="Update balance" onclick="quickUpdateGoalBalance('${g.id}')">💵</button>
                     <button class="icon-btn" onclick="editItem('goals','${g.id}')">✏️</button>
                     ${!g.isPrimary ? `<button class="icon-btn" onclick="deleteItem('goals','${g.id}')">🗑️</button>` : ''}
@@ -2287,9 +2900,13 @@
           <input id="m-min" type="number" inputmode="decimal" step="0.01" min="0" value="${item ? item.minPayment : ''}" />
           <label>Payment due day of month (1–31)</label>
           <input id="m-due-day" type="number" inputmode="numeric" min="1" max="31" placeholder="e.g. 15" value="${item && item.dueDay ? item.dueDay : ''}" />
-          <label>Interest rate % (optional)</label>
-          <input id="m-rate" type="number" inputmode="decimal" step="0.01" min="0" value="${item && item.rate != null ? item.rate : ''}" />
-          <p class="tip" style="margin-top:8px;">Due day helps Coming Up and paycheck planning set money aside before the payment is due.</p>
+          <label style="display:flex;align-items:center;gap:10px;margin-top:8px;">
+            <input type="checkbox" id="m-has-interest" ${item && item.hasInterest !== false && (item.rate > 0 || item.type === 'credit' || !item) ? 'checked' : (item && item.hasInterest ? 'checked' : '')} style="width:auto;" />
+            <span>This debt charges interest</span>
+          </label>
+          <label>APR % (annual rate)</label>
+          <input id="m-rate" type="number" inputmode="decimal" step="0.01" min="0" value="${item && item.rate != null ? item.rate : ''}" placeholder="e.g. 22.9" />
+          <p class="tip" style="margin-top:8px;">If interest is on, Sim adds ~APR÷12 each month before payments. Off = principal-only (0% promo, etc.).</p>
         `;
       } else if (key === 'goals') {
         const linked = item ? goalLinkedAccount(item) : null;
@@ -2388,6 +3005,10 @@
         obj.dueDay = dd ? Math.min(31, Math.max(1, parseInt(dd, 10) || 0)) || null : null;
         const rate = document.getElementById('m-rate').value;
         obj.rate = rate === '' ? null : Number(rate);
+        obj.hasInterest = !!document.getElementById('m-has-interest')?.checked;
+        if (obj.hasInterest && (!obj.rate || obj.rate <= 0)) {
+          // still allowed; sim treats as 0% until rate is set
+        }
       } else if (key === 'goals') {
         obj.target = Number(document.getElementById('m-target').value) || 0;
         obj.current = Number(document.getElementById('m-current').value) || 0;
@@ -2577,6 +3198,8 @@
       let newVal = round2(Number(value) || 0);
       if (newVal < 0) newVal = 0;
       if (newVal > amount) newVal = amount;
+      newVal = Math.round(newVal / 50) * 50;
+      if (newVal > amount) newVal = Math.floor(amount / 50) * 50;
       const oldVal = lastPlan.alloc[idx].amount;
       const delta = round2(newVal - oldVal);
       lastPlan.alloc[idx].amount = newVal;
@@ -2612,7 +3235,7 @@
         if (pctEl) pctEl.textContent = pct + '% of check';
         if (barEl) barEl.style.width = pct + '%';
         if (numEl && document.activeElement !== numEl) numEl.value = Number(a.amount).toFixed(2);
-        if (rangeEl) rangeEl.value = Math.round(a.amount);
+        if (rangeEl && document.activeElement !== rangeEl) rangeEl.value = Math.round((Number(a.amount) || 0) / 50) * 50;
       });
       const totalEl = document.getElementById('alloc-total');
       const total = round2(lastPlan.alloc.reduce((s, a) => s + (Number(a.amount) || 0), 0));
@@ -2698,7 +3321,8 @@
         const monthly = Number(g.monthlyContribute) || 0;
         return left > 0.01 && monthly > 0.01;
       });
-      goalsToFund.sort((a, b) => (b.isPrimary ? 1 : 0) - (a.isPrimary ? 1 : 0));
+      // Fund in Goals list priority order (#1 first)
+      // goalsToFund already follows state.goals order
 
       if (state.phase === 'cushion') {
         goalsToFund.forEach(g => {
@@ -2801,7 +3425,7 @@
                     style="width:100px;padding:8px 10px;font-size:0.95rem;font-weight:600;text-align:right;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:10px;" />
                 </div>
               </div>
-              <input type="range" id="alloc-range-${i}" min="0" max="${amount}" step="1" value="${Math.round(l.amount)}"
+              <input type="range" id="alloc-range-${i}" min="0" max="${amount}" step="50" value="${Math.round(l.amount / 50) * 50}"
                 oninput="onAllocSlider(${i}, this.value)"
                 style="width:100%;margin-top:8px;accent-color:var(--accent);" />
               <div class="progress-wrap">
