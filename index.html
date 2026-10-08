@@ -458,7 +458,7 @@
           <button id="phase-cushion" class="active" onclick="setPhase('cushion')">1. Build Cushion</button>
           <button id="phase-debt" onclick="setPhase('debt')">2. Attack Debt</button>
         </div>
-        <p class="tip" id="phase-tip">Right now: cover minimums + grow Savings (Misc Money) at your monthly rate.</p>
+        <p class="tip" id="phase-tip">Right now: cover minimums + fund goals (Projects / Savings) at your monthly rate.</p>
         <div id="aggression-panel" class="hidden">
           <label style="margin-top:12px;">Debt aggression — how much extra goes to debt vs kept</label>
           <input type="range" id="debt-aggression" min="0" max="100" step="5" value="70" oninput="onAggressionChange(this.value)" style="width:100%;accent-color:var(--rose);" />
@@ -617,7 +617,7 @@
         <p style="font-size:0.8rem;color:var(--muted);margin-bottom:8px;">
           Ask Grok for a bank snapshot, then paste it here to fill account (and matching) balances. One line per item, e.g. <code>Bills: 1234.56</code>
         </p>
-        <textarea id="audit-import-text" placeholder="Bills: 356.31&#10;Trents Pocket: 0.02&#10;Bri’s Pocket: 50.00&#10;Rent &amp; Utilites: 5.04&#10;Wedding Savings: 4.42&#10;VISA Platinum: 9855.78"></textarea>
+        <textarea id="audit-import-text" placeholder="Bills: 356.31&#10;Trents Pocket: 0.02&#10;Bri’s Pocket: 50.00&#10;Mortgage: 5.04&#10;Projects: 100.00&#10;Savings / EF: 4.42&#10;Buffer: 0.00&#10;VISA Platinum: 9855.78"></textarea>
         <button class="btn secondary" onclick="importBalanceSnapshot()">Apply pasted balances</button>
       </div>
 
@@ -700,7 +700,7 @@
       <div class="card">
         <h2><span class="dot" style="background:var(--accent)"></span> Bank Accounts</h2>
         <p style="font-size:0.8rem;color:var(--muted);margin-bottom:10px;">
-          Drag ⠿ or use ↑↓ to reorder. Tap 💵 to update balances. <strong>Savings</strong> goal tracks Misc Money; <strong>Wedding Savings</strong> tracks that account. Routing under <strong>More</strong>.
+          Drag ⠿ or use ↑↓ to reorder. Tap 💵 to update balances. Goals keep <strong>their own</strong> saved amounts — a linked account is only where deposits go (not shared as every goal’s balance).
         </p>
         <ul class="item-list" id="list-accounts"></ul>
       </div>
@@ -797,8 +797,8 @@
       bills: [],
       debts: [],
       goals: [
-        { id: 'savings', name: 'Savings', target: 10000, current: 0, isPrimary: true, monthlyContribute: 200, accountId: 'acct-misc' },
-        { id: 'wedding', name: 'Wedding Savings', target: 5000, current: 0, isPrimary: false, monthlyContribute: 0, accountId: 'acct-savings' }
+        { id: 'savings', name: 'Projects', target: 10000, current: 0, isPrimary: true, monthlyContribute: 200, accountId: 'acct-misc' },
+        { id: 'wedding', name: 'Savings / EF', target: 5000, current: 0, isPrimary: false, monthlyContribute: 0, accountId: 'acct-savings' }
       ],
       // Per-paycheck allowance (between checks) — matches family $750 plan
       everyday: [
@@ -813,13 +813,13 @@
       // Permanent accounts — names match real bank
       accounts: [
         { id: 'acct-bills', name: 'Bills', type: 'checking', balance: 0, isBillPay: true, permanent: true },
-        { id: 'acct-misc', name: 'Misc Money', type: 'checking', balance: 0, isBillPay: false, permanent: true },
-        { id: 'acct-savings', name: 'Wedding Savings', type: 'savings', balance: 0, isBillPay: false, permanent: true },
-        { id: 'acct-spending', name: 'Spending Money', type: 'checking', balance: 0, isBillPay: false, permanent: true },
+        { id: 'acct-misc', name: 'Projects', type: 'checking', balance: 0, isBillPay: false, permanent: true },
+        { id: 'acct-savings', name: 'Savings / EF', type: 'savings', balance: 0, isBillPay: false, permanent: true },
+        { id: 'acct-spending', name: 'Buffer', type: 'checking', balance: 0, isBillPay: false, permanent: true },
         { id: 'acct-trent', name: "Trent's Pocket", type: 'checking', balance: 0, isBillPay: false, permanent: true },
         { id: 'acct-bri', name: "Bri's Pocket", type: 'checking', balance: 0, isBillPay: false, permanent: true },
         { id: 'acct-equip', name: 'Trent Zurflueh Equipment Repair', type: 'checking', balance: 0, isBillPay: false, permanent: true },
-        { id: 'acct-mortgage', name: 'Rent & Utilities', type: 'checking', balance: 0, isBillPay: false, permanent: true }
+        { id: 'acct-mortgage', name: 'Mortgage', type: 'checking', balance: 0, isBillPay: false, permanent: true }
       ],
       routing: {
         deposit: 'acct-bills',
@@ -861,9 +861,9 @@
             if (def.id === 'acct-equip') return isEquipName(nm);
             if (def.id === 'acct-bri') return /bri'?s?\s*pocket/i.test(nm);
             if (def.id === 'acct-mortgage') return /rent|mortgage|utilit/i.test(nm) && !isEquipName(nm);
-            if (def.id === 'acct-savings') return /wedding|savings/i.test(nm) && !/spending/i.test(nm);
-            if (def.id === 'acct-misc') return /^misc/i.test(nm);
-            if (def.id === 'acct-spending') return /spending/i.test(nm);
+            if (def.id === 'acct-savings') return /wedding|savings\s*\/?\s*ef|^savings$/i.test(nm) && !/spending|buffer|project/i.test(nm);
+            if (def.id === 'acct-misc') return /^misc|projects?/i.test(nm);
+            if (def.id === 'acct-spending') return /spending|buffer/i.test(nm);
             if (def.id === 'acct-bills') return /^bills?$/i.test(String(nm).trim());
             return nm.toLowerCase() === (def.name || '').toLowerCase();
           });
@@ -960,20 +960,23 @@
             if (g.monthlyContribute == null) g.monthlyContribute = g.isPrimary ? 200 : 0;
             if (g.isPrimary || g.id === 'cushion' || /house|baby|cushion/i.test(g.name || '')) {
               g.id = g.id === 'cushion' ? 'savings' : g.id;
-              g.name = 'Savings';
               g.isPrimary = true;
-              g.accountId = 'acct-misc';
+              g.accountId = g.accountId || 'acct-misc';
+              // Legacy "Savings" primary → Projects (bank account rename)
+              if (/^(savings|house|baby|cushion)/i.test(g.name || '') && !/project|ef/i.test(g.name || '')) {
+                g.name = 'Projects';
+              }
             }
-            if (g.id === 'wedding' || /wedding|emergency/i.test(g.name || '')) {
-              if (/emergency/i.test(g.name || '') && !/wedding/i.test(g.name || '')) g.name = 'Wedding Savings';
+            if (g.id === 'wedding' || /wedding|emergency|savings\s*\/?\s*ef/i.test(g.name || '')) {
+              if (/wedding|emergency/i.test(g.name || '') || g.id === 'wedding') g.name = 'Savings / EF';
               g.accountId = g.accountId || 'acct-savings';
             }
           });
           if (!merged.goals.some(g => g.isPrimary)) {
-            merged.goals.unshift({ id: 'savings', name: 'Savings', target: 10000, current: 0, isPrimary: true, monthlyContribute: 200, accountId: 'acct-misc' });
+            merged.goals.unshift({ id: 'savings', name: 'Projects', target: 10000, current: 0, isPrimary: true, monthlyContribute: 200, accountId: 'acct-misc' });
           }
-          if (!merged.goals.some(g => g.id === 'wedding' || /wedding/i.test(g.name || ''))) {
-            merged.goals.push({ id: 'wedding', name: 'Wedding Savings', target: 5000, current: 0, isPrimary: false, monthlyContribute: 0, accountId: 'acct-savings' });
+          if (!merged.goals.some(g => g.id === 'wedding' || /wedding|savings\s*\/?\s*ef/i.test(g.name || ''))) {
+            merged.goals.push({ id: 'wedding', name: 'Savings / EF', target: 5000, current: 0, isPrimary: false, monthlyContribute: 0, accountId: 'acct-savings' });
           }
         }
         return merged;
@@ -1707,12 +1710,16 @@
         brispocket: 'acct-bri',
         bripocket: 'acct-bri',
         savings: 'acct-savings',
+        savingsef: 'acct-savings',
         weddingsavings: 'acct-savings',
         wedding: 'acct-savings',
         miscmoney: 'acct-misc',
         misc: 'acct-misc',
+        projects: 'acct-misc',
+        project: 'acct-misc',
         spendingmoney: 'acct-spending',
         spending: 'acct-spending',
+        buffer: 'acct-spending',
         trentzurfluhequipmentrepair: 'acct-equip',
         equipmentrepair: 'acct-equip',
         equipment: 'acct-equip'
@@ -2251,9 +2258,10 @@
             </div>
             <div class="item-meta">${
               a.id === 'acct-bills' ? 'Deposit / bills / debt mins' :
-              a.id === 'acct-mortgage' ? 'Rent & utilities hold' :
-              a.id === 'acct-misc' ? 'Savings goal' :
-              a.id === 'acct-savings' ? 'Wedding Savings goal' :
+              a.id === 'acct-mortgage' ? 'Mortgage hold' :
+              a.id === 'acct-misc' ? 'Projects' :
+              a.id === 'acct-savings' ? 'Savings / EF' :
+              a.id === 'acct-spending' ? 'Buffer' :
               a.id === 'acct-trent' ? "Trent's spending" :
               a.id === 'acct-bri' ? "Bri's spending" :
               'Update with 💵'
@@ -2346,14 +2354,14 @@
       const g = (state.goals || []).find(x => x.id === goalId);
       if (!g) return;
       const acct = goalLinkedAccount(g);
-      const cur = acct ? (Number(acct.balance) || 0) : (Number(g.current) || 0);
-      const label = acct ? (g.name + ' (' + acct.name + ')') : g.name;
-      const val = prompt('Update balance for "' + label + '" ($):', cur);
+      const cur = Number(g.current) || 0;
+      const hint = acct ? ' (deposits go to ' + acct.name + ' — goal amount is separate)' : '';
+      const val = prompt('How much is saved toward "' + g.name + '"?' + hint + '\n$', cur);
       if (val === null) return;
       const n = Number(val);
       if (isNaN(n) || n < 0) { alert('Enter a valid amount'); return; }
       g.current = round2(n);
-      if (acct) acct.balance = round2(n);
+      // Do NOT overwrite bank account balance — multiple goals may share one account
       save();
     }
 
@@ -2637,7 +2645,7 @@
         } else {
           syncCushionGoalFromAccount();
           gEl.innerHTML = state.goals.map((g, idx) => {
-            const cur = g.isPrimary ? cushionActualBalance() : (Number(g.current) || 0);
+            const cur = Number(g.current) || 0;
             const pct = g.target > 0 ? Math.min(100, Math.round((cur / g.target) * 1000) / 10) : 0;
             const fillClass = pct >= 100 ? '' : (pct >= 50 ? 'sky' : (pct >= 25 ? 'amber' : 'rose'));
             const pri = idx + 1;
@@ -2717,23 +2725,19 @@
       if (!g) return null;
       if (g.accountId) return getAccountById(g.accountId);
       if (g.isPrimary) return getAccountById('acct-misc');
-      if (/wedding/i.test(g.name || '')) return getAccountById('acct-savings');
+      if (/wedding|savings\s*\/?\s*ef/i.test(g.name || '')) return getAccountById('acct-savings');
       return null;
     }
 
     function cushionActualBalance() {
-      // Savings goal tracks Misc Money
+      // Primary goal uses its own tracked amount (not full account — multiple goals may share an account)
       const primary = state.goals.find(g => g.isPrimary) || state.goals[0];
-      const acct = goalLinkedAccount(primary) || getAccountById('acct-misc');
-      if (acct) return Number(acct.balance) || 0;
       return primary ? (Number(primary.current) || 0) : 0;
     }
 
+    /** Goals keep independent balances. Linked accounts are deposit destinations only — never copy full account balance onto every goal. */
     function syncCushionGoalFromAccount() {
-      (state.goals || []).forEach(g => {
-        const acct = goalLinkedAccount(g);
-        if (acct) g.current = Number(acct.balance) || 0;
-      });
+      // no-op: intentional — each goal.current is its own envelope
     }
 
     function updateQuickStats() {
@@ -2926,7 +2930,7 @@
           <label>Linked bank account</label>
           <select id="m-goal-account">${acctOpts}</select>
           <p class="tip" style="margin-top:8px;">
-            Current saved updates the linked account too (Savings → Misc Money, Wedding → Wedding Savings).
+            “Current saved” is this goal’s own progress. Linked account is only where new deposits go (e.g. Projects, Savings / EF) — not shared as every goal’s balance.
           </p>
         `;
       } else if (key === 'income') {
@@ -3014,8 +3018,7 @@
         obj.current = Number(document.getElementById('m-current').value) || 0;
         obj.monthlyContribute = Number(document.getElementById('m-monthly')?.value) || 0;
         obj.accountId = document.getElementById('m-goal-account')?.value || 'acct-misc';
-        const linkedAcct = getAccountById(obj.accountId);
-        if (linkedAcct) linkedAcct.balance = round2(obj.current);
+        // Goal "current" is its own envelope — does not overwrite bank account balance
         if (editing.id) {
           const existing = state.goals.find(g => g.id === editing.id);
           if (existing && existing.isPrimary) obj.isPrimary = true;
@@ -3180,8 +3183,12 @@
         const detail = m.details.length
           ? `<div style="font-size:0.75rem;color:var(--muted);margin-top:2px;">${escapeHtml(m.details.join(' · '))}</div>`
           : '';
+        const alreadyThere = id === depositId;
+        const verb = alreadyThere
+          ? 'Keep in <strong style="color:var(--text)">' + escapeHtml(name) + '</strong> <span style="color:var(--muted);font-size:0.75rem;">(deposit lands here)</span>'
+          : 'Move to <strong style="color:var(--text)">' + escapeHtml(name) + '</strong>';
         return `<div class="alloc-row" style="align-items:flex-start;">
-          <div class="label">Move to <strong style="color:var(--text)">${escapeHtml(name)}</strong>${detail}</div>
+          <div class="label">${verb}${detail}</div>
           <div class="amt">${money(m.amt)}</div>
         </div>`;
       }).join('');
