@@ -453,6 +453,26 @@
       <div id="plan-result" class="hidden"></div>
 
       <div class="card">
+        <h2><span class="dot" style="background:var(--green)"></span> Move money</h2>
+        <p style="font-size:0.8rem;color:var(--muted);margin-bottom:10px;">
+          After allocate, move overage yourself — e.g. $600 from <strong>Bills</strong> → <strong>Projects</strong> for a goal.
+        </p>
+        <label>From account</label>
+        <select id="move-from"></select>
+        <label>To account</label>
+        <select id="move-to"></select>
+        <label>Amount ($)</label>
+        <input type="number" id="move-amount" inputmode="decimal" step="0.01" min="0" placeholder="e.g. 600.00" />
+        <label>Credit a goal? (optional)</label>
+        <select id="move-goal">
+          <option value="">— No goal / just move —</option>
+        </select>
+        <p class="tip" id="move-hint" style="margin-top:8px;">Updates app balances to match what you’ll do in the bank.</p>
+        <button type="button" class="btn secondary" id="btn-move-money" style="margin-top:10px;">Move money</button>
+        <div id="move-result" class="hidden" style="margin-top:12px;"></div>
+      </div>
+
+      <div class="card">
         <h2><span class="dot" style="background:var(--amber)"></span> Current Mode</h2>
         <div class="phase-toggle">
           <button id="phase-cushion" class="active" onclick="setPhase('cushion')">1. Build Cushion</button>
@@ -639,9 +659,22 @@
       <div id="audit-result" class="hidden"></div>
 
       <div class="card">
+        <h2><span class="dot" style="background:var(--green)"></span> Extra cash check</h2>
+        <p style="font-size:0.8rem;color:var(--muted);margin-bottom:10px;">
+          After you allocate, check the <strong>Bills</strong> account: balance minus unpaid bills/debt mins left till next paycheck = <strong>overage</strong> you can move to Projects, Savings, or spending.
+        </p>
+        <label style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+          <input type="checkbox" id="audit-just-paid" style="width:auto;" onchange="onJustPaidToggle()" />
+          <span>Got paid today — count through the <strong>next</strong> payday (e.g. skip the 10th → use the 25th)</span>
+        </label>
+        <button class="btn secondary" onclick="checkExtraCash()">Check extra cash</button>
+        <div id="extra-cash-result" class="hidden" style="margin-top:12px;"></div>
+      </div>
+
+      <div class="card">
         <h2><span class="dot" style="background:var(--accent)"></span> Weekly report</h2>
         <p style="font-size:0.8rem;color:var(--muted);margin-bottom:10px;">
-          One report to send — days to payday, pockets, groceries left, balances, and debt.
+          One report to send — extra cash, days to payday, pockets, balances, and debt.
         </p>
         <button class="btn" onclick="generateShareReport()">Generate report</button>
         <button class="btn secondary" id="btn-copy-report" style="display:none;margin-top:8px;" onclick="copyShareReport()">Copy to Clipboard</button>
@@ -692,7 +725,7 @@
       <div class="card">
         <h2><span class="dot" style="background:var(--green)"></span> Cash Cushion & Goals</h2>
         <p style="font-size:0.8rem;color:var(--muted);margin-bottom:10px;">
-          Use <strong>↑↓</strong> to set priority (#1 is funded first in Sim cascade). Monthly contribution is split across the 10th &amp; 25th.
+          Use <strong>⭐</strong> to set the Primary goal (home progress). <strong>↑↓</strong> sets funding order (#1 first). Each goal tracks its own saved amount.
         </p>
         <ul class="item-list" id="list-goals"></ul>
         <button class="btn secondary small" onclick="openModal('goals')">+ Add Goal</button>
@@ -1685,6 +1718,13 @@
       if (!state.accounts) state.accounts = [];
       if (!state.debts) state.debts = [];
 
+      // Remove mistaken "Mortgage" debts created when the bank account was misclassified
+      state.debts = (state.debts || []).filter(d => {
+        const dn = String(d.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (dn === 'mortgage' || dn === 'rentutilities' || dn === 'rentutilites') return false;
+        return true;
+      });
+
       function parseAmount(s) {
         const m = String(s).replace(/[,$]/g, '').match(/-?\d+(\.\d+)?/);
         return m ? Number(m[0]) : null;
@@ -1726,7 +1766,10 @@
       };
 
       function looksLikeDebt(n, name, amt) {
-        if (/visa|mastercard|amex|discover|credit|loan|mortgage|auto|chevy|chevrolet|silverado|ford|toyota|dutc|rv|trailer|platinum|card/.test(n)) return true;
+        // Do NOT treat bare "mortgage" as debt — that's the Mortgage bank account
+        if (/^mortgage$|^rentutil|^rentandutil/i.test(n)) return false;
+        if (/visa|mastercard|amex|discover|creditcard|loan|auto|chevy|chevrolet|silverado|ford|toyota|dutc|rv|trailer|platinum/.test(n)) return true;
+        if (/\bcredit\b/.test(name || '') || /card\b/i.test(name || '')) return true;
         if (Math.abs(amt) >= 500 && /20\d{2}|series|class|hd/.test(n)) return true;
         return false;
       }
@@ -1739,15 +1782,20 @@
         if (/trent'?s?\s*pocket/i.test(name || '') || n === 'trentspocket' || n === 'trentpocket') {
           return getAccountById('acct-trent') || null;
         }
+        // Exact alias match (Mortgage, Projects, Bills, etc.)
         if (ACCOUNT_ALIASES[n]) {
           const a = getAccountById(ACCOUNT_ALIASES[n]);
           if (a) return a;
         }
+        // Exact permanent account name match
+        const exact = (state.accounts || []).find(a => norm(a.name) === n);
+        if (exact) return exact;
+
         // Longer alias keys first to avoid short false matches
         const keys = Object.keys(ACCOUNT_ALIASES).sort((a, b) => b.length - a.length);
         for (const key of keys) {
           if (key.length < 4) continue;
-          if (n.includes(key) || (key.length >= 6 && key.includes(n))) {
+          if (n === key || n.includes(key)) {
             const a = getAccountById(ACCOUNT_ALIASES[key]);
             if (a) return a;
           }
@@ -1792,7 +1840,16 @@
         if (!name || amt == null || isNaN(amt)) return;
         const n = norm(name);
 
-        // Prefer debt detection for loan/credit style names
+        // Bank accounts FIRST (Mortgage, Projects, Bills, etc. must not become debts)
+        let acct = findAccount(n, name);
+        if (acct) {
+          acct.balance = round2(amt);
+          matched++;
+          report.push(acct.name + ' (account) → ' + money(amt));
+          return;
+        }
+
+        // Then credit cards / loans / vehicles
         if (looksLikeDebt(n, name, amt)) {
           let debt = findDebt(n, name);
           if (!debt) {
@@ -1816,14 +1873,6 @@
             report.push(debt.name + ' (debt) → ' + money(debt.balance));
           }
           matched++;
-          return;
-        }
-
-        let acct = findAccount(n, name);
-        if (acct) {
-          acct.balance = round2(amt);
-          matched++;
-          report.push(acct.name + ' → ' + money(amt));
           return;
         }
 
@@ -2350,6 +2399,21 @@
       save();
     }
 
+    function setPrimaryGoal(id) {
+      if (!state.goals || !state.goals.length) return;
+      state.goals.forEach(g => {
+        g.isPrimary = g.id === id;
+      });
+      // Move primary to top of funding priority list
+      const idx = state.goals.findIndex(g => g.id === id);
+      if (idx > 0) {
+        const [g] = state.goals.splice(idx, 1);
+        state.goals.unshift(g);
+      }
+      state.goals.forEach((g, i) => { g.priority = i + 1; });
+      save();
+    }
+
     function quickUpdateGoalBalance(goalId) {
       const g = (state.goals || []).find(x => x.id === goalId);
       if (!g) return;
@@ -2377,6 +2441,104 @@
       const marked = accounts.filter(a => a.isBillPay);
       if (marked.length) return marked.reduce((s, a) => s + (Number(a.balance) || 0), 0);
       return accounts.reduce((s, a) => s + (Number(a.balance) || 0), 0);
+    }
+
+    /** Bills-account overage only — pockets, Buffer, Projects, Savings excluded */
+    function computeExtraCash(horizonDays = 40) {
+      const byId = (id) => {
+        const a = getAccountById(id);
+        return a ? (Number(a.balance) || 0) : 0;
+      };
+      const bills = byId('acct-bills');
+      const mortgage = byId('acct-mortgage');
+      const projects = byId('acct-misc');
+      const savingsEf = byId('acct-savings');
+      const buffer = byId('acct-spending');
+      const trent = byId('acct-trent');
+      const bri = byId('acct-bri');
+      const equip = byId('acct-equip');
+      const earmarked = round2(projects + savingsEf);
+      const excluded = round2(earmarked + buffer + trent + bri + equip);
+
+      const oblig = upcomingObligations(horizonDays);
+      const dueSoon = round2(oblig.total || 0);
+      // Housing usually leaves Mortgage account — don't double-count against Bills
+      const dueFromMortgage = round2((oblig.details || [])
+        .filter(d => d.category === 'housing')
+        .reduce((s, d) => s + d.amount, 0));
+      const dueFromBills = round2(Math.max(0, dueSoon - dueFromMortgage));
+      const stillDueFromBills = round2(dueFromBills + Math.max(0, dueFromMortgage - mortgage));
+
+      const extra = round2(bills - stillDueFromBills);
+      const shortfall = round2(Math.max(0, stillDueFromBills - bills));
+      const liquid = bills;
+      const operating = bills;
+      const billPay = bills;
+      const payday = typeof nextPaydayInfo === 'function' ? nextPaydayInfo() : null;
+      return {
+        liquid, operating, earmarked, excluded, dueSoon, dueFromBills, dueFromMortgage,
+        stillDueFromBills, billPay, shortfall, extra,
+        extraVsOperating: extra,
+        bills, mortgage, projects, savingsEf, buffer, trent, bri, equip,
+        obligDetails: oblig.details || [],
+        horizonDays,
+        payday
+      };
+    }
+
+    function checkExtraCash() {
+      const payday = nextPaydayInfo();
+      const horizon = Math.max(1, payday.days || 1);
+      const x = computeExtraCash(horizon);
+      const el = document.getElementById('extra-cash-result');
+      if (!el) return;
+      el.classList.remove('hidden');
+      const good = x.extra >= 0 && x.shortfall <= 0;
+      el.innerHTML = `
+        <div class="result-box ${good ? 'good' : 'warn'}">
+          <h3>Bills account overage</h3>
+          <div class="summary-grid">
+            <div class="summary-card">
+              <div class="label">Overage to move</div>
+              <div class="value" style="color:${x.extra >= 0 ? 'var(--green)' : 'var(--rose)'}">${money(x.extra)}</div>
+            </div>
+            <div class="summary-card">
+              <div class="label">Bills balance</div>
+              <div class="value">${money(x.bills)}</div>
+            </div>
+            <div class="summary-card">
+              <div class="label">Still needed from Bills</div>
+              <div class="value" style="color:var(--amber)">${money(x.stillDueFromBills)}</div>
+            </div>
+            <div class="summary-card">
+              <div class="label">Mortgage account</div>
+              <div class="value">${money(x.mortgage)}</div>
+            </div>
+          </div>
+          <p style="font-size:0.78rem;color:var(--muted);margin-top:10px;">
+            <strong>Overage</strong> = Bills balance − unpaid obligations that still need to leave Bills (housing covered by Mortgage is not counted against Bills).
+            Move overage yourself to Projects, Savings/EF, Buffer, or pockets.
+            ${x.shortfall > 0 ? '<br><strong style="color:var(--rose)">Shortfall: need ' + money(x.shortfall) + ' more in Bills for unpaid items.</strong>' : ''}
+            ${x.payday ? '<br>Window: ' + escapeHtml(x.payday.which) + ' · ' + escapeHtml(x.payday.label) + ' (' + x.payday.days + ' day(s))' + (x.payday.skippedNearest ? ' · skipped payday just received' : '') + '.' : ''}
+          </p>
+          <p class="section-label">Excluded from overage (not counted)</p>
+          <div class="alloc-row"><div class="label">Projects</div><div class="amt" style="color:var(--muted)">${money(x.projects)}</div></div>
+          <div class="alloc-row"><div class="label">Savings / EF</div><div class="amt" style="color:var(--muted)">${money(x.savingsEf)}</div></div>
+          <div class="alloc-row"><div class="label">Buffer</div><div class="amt" style="color:var(--muted)">${money(x.buffer)}</div></div>
+          <div class="alloc-row"><div class="label">Trent's Pocket</div><div class="amt" style="color:var(--muted)">${money(x.trent)}</div></div>
+          <div class="alloc-row"><div class="label">Bri's Pocket</div><div class="amt" style="color:var(--muted)">${money(x.bri)}</div></div>
+          ${x.obligDetails.length ? `
+            <p class="section-label">Still unpaid till next paycheck</p>
+            ${x.obligDetails.slice(0, 12).map(d => `
+              <div class="alloc-row">
+                <div class="label">${escapeHtml(d.name)}${d.due ? ' · ' + formatShortDate(d.due) : ''}</div>
+                <div class="amt">${money(d.amount)}</div>
+              </div>
+            `).join('')}
+          ` : '<p class="empty">No unpaid obligations in this window.</p>'}
+        </div>
+      `;
+      el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
     function nextPayDate(from = new Date()) {
@@ -2601,6 +2763,7 @@
       renderList('income', 'list-income', i => (i.frequency || 'per paycheck'));
       renderAccountsList();
       renderComingUp();
+      fillMoveSelects();
 
       // Debts special
       const dEl = document.getElementById('list-debts');
@@ -2661,11 +2824,12 @@
                     <div class="item-meta">${money(cur)} of ${money(g.target)} · ${money(g.monthlyContribute != null ? g.monthlyContribute : 0)}/mo${goalLinkedAccount(g) ? ' · ' + escapeHtml(goalLinkedAccount(g).name) : ''}</div>
                   </div>
                   <div class="item-actions">
+                    ${!g.isPrimary ? `<button class="icon-btn" title="Set as primary goal" onclick="setPrimaryGoal('${g.id}')">⭐</button>` : ''}
                     <button class="icon-btn" title="Higher priority" onclick="moveGoal('${g.id}',-1)">↑</button>
                     <button class="icon-btn" title="Lower priority" onclick="moveGoal('${g.id}',1)">↓</button>
                     <button class="icon-btn" title="Update balance" onclick="quickUpdateGoalBalance('${g.id}')">💵</button>
                     <button class="icon-btn" onclick="editItem('goals','${g.id}')">✏️</button>
-                    ${!g.isPrimary ? `<button class="icon-btn" onclick="deleteItem('goals','${g.id}')">🗑️</button>` : ''}
+                    <button class="icon-btn" onclick="deleteItem('goals','${g.id}')">🗑️</button>
                   </div>
                 </div>
                 <div class="progress-wrap">
@@ -3061,8 +3225,16 @@
           return;
         }
       }
+      if (key === 'goals' && (state.goals || []).length <= 1) {
+        alert('Keep at least one goal.');
+        return;
+      }
       if (!confirm('Delete this item?')) return;
+      const wasPrimary = key === 'goals' && (state.goals || []).find(g => g.id === id)?.isPrimary;
       state[key] = state[key].filter(x => x.id !== id);
+      if (key === 'goals' && wasPrimary && state.goals.length) {
+        state.goals[0].isPrimary = true;
+      }
       save();
     }
 
@@ -3475,6 +3647,143 @@
       if (from) from.balance = round2((Number(from.balance) || 0) - amt);
       if (to) to.balance = round2((Number(to.balance) || 0) + amt);
     }
+
+    function fillMoveSelects() {
+      try {
+        ensurePermanentAccounts(state);
+      } catch (e) { /* ignore */ }
+      const fromEl = document.getElementById('move-from');
+      const toEl = document.getElementById('move-to');
+      const goalEl = document.getElementById('move-goal');
+      const btn = document.getElementById('btn-move-money');
+      if (!fromEl || !toEl) return;
+
+      const prevFrom = fromEl.value;
+      const prevTo = toEl.value;
+      const prevGoal = goalEl ? goalEl.value : '';
+      const accts = state.accounts || [];
+      if (!accts.length) {
+        fromEl.innerHTML = '<option value="">No accounts</option>';
+        toEl.innerHTML = '<option value="">No accounts</option>';
+      } else {
+        const opts = accts.map(a =>
+          '<option value="' + a.id + '">' + escapeHtml(a.name) + ' (' + money(Number(a.balance) || 0) + ')</option>'
+        ).join('');
+        fromEl.innerHTML = opts;
+        toEl.innerHTML = opts;
+        fromEl.value = (prevFrom && getAccountById(prevFrom)) ? prevFrom : (getAccountById('acct-bills') ? 'acct-bills' : accts[0].id);
+        toEl.value = (prevTo && getAccountById(prevTo) && prevTo !== fromEl.value) ? prevTo
+          : (getAccountById('acct-misc') ? 'acct-misc' : (accts.find(a => a.id !== fromEl.value) || accts[0]).id);
+        if (!fromEl.value) fromEl.selectedIndex = 0;
+        if (!toEl.value) toEl.selectedIndex = Math.min(1, toEl.options.length - 1);
+      }
+      if (goalEl) {
+        goalEl.innerHTML = '<option value="">No goal / just move</option>' +
+          (state.goals || []).map(g =>
+            '<option value="' + g.id + '">' + escapeHtml(g.name) + ' (' + money(Number(g.current) || 0) + ' / ' + money(Number(g.target) || 0) + ')</option>'
+          ).join('');
+        if (prevGoal && (state.goals || []).some(g => g.id === prevGoal)) goalEl.value = prevGoal;
+      }
+      // Re-bind click each render so the button always works
+      if (btn) {
+        btn.onclick = function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          executeManualMove();
+        };
+      }
+    }
+
+    function executeManualMove() {
+      try {
+        ensurePermanentAccounts(state);
+        const fromId = (document.getElementById('move-from') || {}).value;
+        const toId = (document.getElementById('move-to') || {}).value;
+        const amtRaw = (document.getElementById('move-amount') || {}).value;
+        const amt = round2(Number(String(amtRaw || '').replace(/[,$]/g, '')) || 0);
+        const goalId = (document.getElementById('move-goal') || {}).value || '';
+
+        if (!fromId || !toId) {
+          alert('Pick both accounts (open the lists and choose From / To).');
+          return;
+        }
+        if (fromId === toId) {
+          alert('From and To must be different accounts.');
+          return;
+        }
+        if (!(amt > 0)) {
+          alert('Enter an amount greater than 0.');
+          return;
+        }
+        const from = getAccountById(fromId);
+        const to = getAccountById(toId);
+        if (!from || !to) {
+          alert('Account not found. Try refreshing the page.');
+          return;
+        }
+        const fromBal = Number(from.balance) || 0;
+        let msg = 'Move ' + money(amt) + ' from ' + from.name + ' to ' + to.name + '?';
+        if (amt > fromBal + 0.001) {
+          msg = from.name + ' only shows ' + money(fromBal) + ' in the app. Move ' + money(amt) + ' anyway?';
+        }
+        if (!window.confirm(msg)) return;
+
+        transfer(fromId, toId, amt);
+
+        let goalNote = '';
+        if (goalId) {
+          const g = (state.goals || []).find(x => x.id === goalId);
+          if (g) {
+            g.current = round2((Number(g.current) || 0) + amt);
+            if (!g.accountId) g.accountId = toId;
+            goalNote = ' · Goal "' + g.name + '" now ' + money(g.current);
+          }
+        }
+
+        try {
+          const log = getOrCreateMonthLog(currentMonthKey());
+          if (log) {
+            if (!log.events) log.events = [];
+            log.events.push({
+              date: new Date().toISOString().slice(0, 10),
+              note: 'Transfer ' + money(amt) + ' ' + from.name + ' → ' + to.name + (goalId ? ' (goal)' : ''),
+              saved: goalId ? amt : 0,
+              debtPaid: 0,
+              unexpected: 0
+            });
+            if (goalId) log.saved = round2((Number(log.saved) || 0) + amt);
+          }
+        } catch (e) { /* ignore log errors */ }
+
+        // Capture balances before save re-renders
+        const fromName = from.name;
+        const toName = to.name;
+        const fromAfter = from.balance;
+        const toAfter = to.balance;
+
+        save();
+
+        const result = document.getElementById('move-result');
+        if (result) {
+          result.classList.remove('hidden');
+          result.innerHTML = '<div class="result-box good">' +
+            '<p style="margin:0;font-size:0.9rem;">Moved <strong>' + money(amt) + '</strong> from <strong>' +
+            escapeHtml(fromName) + '</strong> → <strong>' + escapeHtml(toName) + '</strong>' + escapeHtml(goalNote) + '</p>' +
+            '<p style="margin:6px 0 0;font-size:0.78rem;color:var(--muted);">' +
+            escapeHtml(fromName) + ' now ' + money(fromAfter) + ' · ' + escapeHtml(toName) + ' now ' + money(toAfter) +
+            '</p></div>';
+        }
+        const amtEl = document.getElementById('move-amount');
+        if (amtEl) amtEl.value = '';
+        fillMoveSelects();
+      } catch (err) {
+        alert('Move failed: ' + (err && err.message ? err.message : String(err)));
+        console.error(err);
+      }
+    }
+    // Ensure available to inline handlers if any
+    window.executeManualMove = executeManualMove;
+    window.fillMoveSelects = fillMoveSelects;
 
     function applyPlan() {
       if (!lastPlan || !lastPlan.alloc || !lastPlan.amount) {
@@ -4056,15 +4365,60 @@
     // ========== SHAREABLE WEEKLY REPORT ==========
     let lastShareText = '';
 
-    function nextPaydayInfo(from = new Date()) {
+    function isJustPaidChecked() {
+      return !!document.getElementById('audit-just-paid')?.checked;
+    }
+
+    function onJustPaidToggle() {
+      // Refresh open extra-cash panel if visible
+      const el = document.getElementById('extra-cash-result');
+      if (el && !el.classList.contains('hidden')) checkExtraCash();
+    }
+
+    /**
+     * Next deposit date. If skipNearest / "got paid today", skip the imminent payday
+     * and return the following one (e.g. paid on 10th → look to 25th).
+     */
+    function nextPaydayInfo(from = new Date(), opts = {}) {
+      const skipNearest = opts.skipNearest != null ? opts.skipNearest : isJustPaidChecked();
       const sched = state.paySchedule || DEFAULT.paySchedule;
-      const main = depositDateForScheduledDay(sched.mainDay || 10, from);
-      const adv = depositDateForScheduledDay(sched.advanceDay || 25, from);
-      let best = null;
-      if (main && adv) best = main.deposit <= adv.deposit ? main : adv;
-      else best = main || adv;
+      const mainDay = sched.mainDay || 10;
+      const advDay = sched.advanceDay || 25;
+
+      // Collect next several deposit candidates
+      const candidates = [];
+      let cursor = new Date(from.getFullYear(), from.getMonth(), from.getDate());
+      for (let i = 0; i < 6; i++) {
+        const main = depositDateForScheduledDay(mainDay, cursor);
+        const adv = depositDateForScheduledDay(advDay, cursor);
+        [main, adv].forEach(info => {
+          if (!info || !info.deposit) return;
+          const key = info.deposit.toISOString().slice(0, 10);
+          if (candidates.some(c => c.deposit.toISOString().slice(0, 10) === key)) return;
+          candidates.push(info);
+        });
+        // Move cursor past the nearer of the two so we can find further pays
+        const nearer = [main, adv].filter(Boolean).sort((a, b) => a.deposit - b.deposit)[0];
+        if (!nearer) break;
+        cursor = new Date(nearer.deposit);
+        cursor.setDate(cursor.getDate() + 1);
+      }
+      candidates.sort((a, b) => a.deposit - b.deposit);
+
+      let best = candidates[0] || null;
+      if (skipNearest && candidates.length > 1) {
+        // Skip paydays that are today or already "the one we just got"
+        const today = new Date(from.getFullYear(), from.getMonth(), from.getDate());
+        const first = candidates[0];
+        const firstDays = daysUntil(first.deposit);
+        // If nearest is within 1 day (today/tomorrow posting), or user said just paid, use the next
+        if (firstDays <= 1 || skipNearest) {
+          best = candidates[1] || candidates[0];
+        }
+      }
+
       if (!best) {
-        return { date: from, days: 0, which: 'Unknown', label: '—' };
+        return { date: from, days: 0, which: 'Unknown', label: '—', skippedNearest: skipNearest };
       }
       const which = best.scheduledDay === 25 ? 'Advance (25th)' : 'Main paycheck (10th)';
       const days = daysUntil(best.deposit);
@@ -4076,7 +4430,8 @@
         days: days != null ? days : 0,
         which,
         label,
-        note: 'Posts ' + label + ' (business day before ' + nominalLabel + ')'
+        note: 'Posts ' + label + ' (business day before ' + nominalLabel + ')',
+        skippedNearest: skipNearest
       };
     }
 
@@ -4111,28 +4466,64 @@
       const monthlyBills = sum(state.bills || [], 'amount');
       const monthlyFixed = monthlyHousing + monthlyBills + totalMin;
       const payday = nextPaydayInfo();
+      const daysToPay = Math.max(1, payday.days || 1);
       const trent = getAccountById('acct-trent');
       const bri = getAccountById('acct-bri');
-      const bills = getAccountById('acct-bills');
       const grocery = (state.everyday || []).find(e => /groc/i.test(e.name || ''));
       const groceryBudget = grocery ? (Number(grocery.amount) || 0) : 0;
-      const groceryLeft = bills ? (Number(bills.balance) || 0) : 0;
+
+      // Unpaid obligations only, through next paycheck (skips items marked paid)
+      const untilPay = upcomingObligations(daysToPay);
+      const unpaidBills = (untilPay.details || []).filter(d => d.category === 'housing' || d.category === 'bills');
+      const unpaidDebtMins = (untilPay.details || []).filter(d => d.category === 'debt');
+      const billsLeftTotal = round2(unpaidBills.reduce((s, d) => s + d.amount, 0));
+      const debtMinsLeftTotal = round2(unpaidDebtMins.reduce((s, d) => s + d.amount, 0));
+
+      const extra = computeExtraCash(daysToPay);
 
       let lines = [];
       lines.push('📊 WEEKLY MONEY REPORT');
       lines.push('Date: ' + reportDate);
       lines.push('Mode: ' + (state.phase === 'cushion' ? 'Building Savings' : 'Attacking Debt (CCs first)'));
       lines.push('');
-      lines.push('—— PAYDAY ——');
-      lines.push('Next check: ' + payday.which);
-      lines.push('Money in account: ' + payday.label + (payday.note ? ' · ' + payday.note : ''));
-      lines.push('Days until payday: ' + payday.days);
-      lines.push('');
       lines.push('—— SPENDING LEFT ——');
       lines.push("Trent's Pocket:  " + money(trent ? trent.balance : 0));
       lines.push("Bri's Pocket:    " + money(bri ? bri.balance : 0));
       lines.push('Groceries budget/check: ' + money(groceryBudget));
-      lines.push('Bills account (groceries + bills): ' + money(groceryLeft));
+      lines.push('');
+      lines.push('—— BILLS LEFT TILL NEXT PAYCHECK ——');
+      lines.push('(Unpaid only · next ' + daysToPay + ' day(s))');
+      if (!unpaidBills.length) {
+        lines.push('None — all marked paid or nothing due.');
+      } else {
+        unpaidBills.forEach(d => {
+          lines.push(d.name + ': ' + money(d.amount) + (d.due ? ' · ' + formatShortDate(d.due) : ''));
+        });
+        lines.push('TOTAL BILLS LEFT: ' + money(billsLeftTotal));
+      }
+      lines.push('');
+      lines.push('—— DEBT MINS LEFT TILL NEXT PAYCHECK ——');
+      if (!unpaidDebtMins.length) {
+        lines.push('None — mins marked paid or nothing due.');
+      } else {
+        unpaidDebtMins.forEach(d => {
+          lines.push(d.name + ': ' + money(d.amount) + (d.due ? ' · ' + formatShortDate(d.due) : ''));
+        });
+        lines.push('TOTAL DEBT MINS LEFT: ' + money(debtMinsLeftTotal));
+      }
+      lines.push('');
+      lines.push('—— BILLS OVERAGE ——');
+      lines.push('Bills balance:              ' + money(extra.bills));
+      lines.push('Still needed from Bills:    ' + money(extra.stillDueFromBills));
+      lines.push('OVERAGE (free to move):     ' + money(extra.extra));
+      lines.push('(Excludes Projects, Savings/EF, Buffer, pockets)');
+      if (extra.shortfall > 0) {
+        lines.push('⚠️ Shortfall in Bills: ' + money(extra.shortfall));
+      } else if (extra.extra > 0) {
+        lines.push('Move overage to Projects, Savings, or spending as you like.');
+      } else {
+        lines.push('No overage — Bills is spoken for till next paycheck.');
+      }
       lines.push('');
       lines.push('—— HOW WE’RE DOING ——');
 
@@ -4157,7 +4548,7 @@
       }
 
       lines.push('');
-      lines.push('—— SAVINGS (Misc Money) ——');
+      lines.push('—— PRIMARY GOAL ——');
       lines.push('Saved:     ' + money(cushion));
       lines.push('Target:    ' + money(cushionTarget));
       lines.push('Left:      ' + money(cushionLeft));
