@@ -8,424 +8,274 @@
   <meta name="theme-color" content="#0f172a" />
   <title>Paycheck Planner</title>
   <style>
-    :root {
-      --bg: #0f172a;
-      --card: #1e293b;
-      --card2: #334155;
-      --text: #f1f5f9;
-      --muted: #94a3b8;
-      --accent: #38bdf8;
-      --green: #4ade80;
-      --amber: #fbbf24;
-      --rose: #fb7185;
-      --purple: #c084fc;
-      --border: #334155;
-      --radius: 14px;
-      --safe-top: env(safe-area-inset-top, 0px);
-      --safe-bottom: env(safe-area-inset-bottom, 0px);
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100dvh;
-      padding-top: 0;
-      padding-bottom: calc(24px + var(--safe-bottom));
-      line-height: 1.4;
-    }
-    header {
-      position: sticky; top: 0; z-index: 50;
-      background: rgba(15,23,42,0.96);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      padding: calc(10px + var(--safe-top)) 12px 0;
-      border-bottom: 1px solid var(--border);
-    }
-    header h1 { font-size: 1.15rem; font-weight: 700; letter-spacing: -0.02em; }
-    header p { font-size: 0.75rem; color: var(--muted); margin-top: 2px; margin-bottom: 8px; }
-    .container { padding: 16px; max-width: 520px; margin: 0 auto; }
-    .card {
-      background: var(--card);
-      border-radius: var(--radius);
-      padding: 16px;
-      margin-bottom: 14px;
-      border: 1px solid var(--border);
-    }
-    .card h2 {
-      font-size: 0.95rem;
-      font-weight: 600;
-      margin-bottom: 12px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .card h2 .dot {
-      width: 8px; height: 8px; border-radius: 50%;
-    }
-    label {
-      display: block;
-      font-size: 0.78rem;
-      color: var(--muted);
-      margin-bottom: 4px;
-      margin-top: 10px;
-    }
-    label:first-child { margin-top: 0; }
-    input, select, textarea {
-      width: 100%;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      color: var(--text);
-      border-radius: 10px;
-      padding: 11px 12px;
-      font-size: 1rem;
-      outline: none;
-      -webkit-appearance: none;
-    }
-    input:focus, select:focus, textarea:focus {
-      border-color: var(--accent);
-    }
-    input[type="number"] { font-variant-numeric: tabular-nums; }
-    input[type="checkbox"] {
-      -webkit-appearance: checkbox;
-      appearance: auto;
-      width: 22px !important;
-      height: 22px;
-      min-width: 22px;
-      padding: 0;
-      margin: 0;
-      border-radius: 4px;
-      accent-color: var(--accent);
-      cursor: pointer;
-      flex-shrink: 0;
-    }
-    .check-row {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-top: 12px;
-      padding: 12px;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      cursor: pointer;
-      font-size: 0.9rem;
-      color: var(--text);
-    }
-    .check-row input { margin: 0; }
-    textarea { min-height: 72px; resize: vertical; }
-    .row { display: flex; gap: 10px; }
-    .row > * { flex: 1; }
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      background: var(--accent);
-      color: #0f172a;
-      font-weight: 600;
-      border: none;
-      border-radius: 12px;
-      padding: 12px 16px;
-      font-size: 0.95rem;
-      cursor: pointer;
-      width: 100%;
-      margin-top: 12px;
-    }
-    .btn:active { opacity: 0.85; }
-    .btn.secondary {
-      background: var(--card2);
-      color: var(--text);
-    }
-    .btn.danger { background: var(--rose); color: #0f172a; }
-    .btn.small {
-      width: auto;
-      padding: 7px 12px;
-      font-size: 0.8rem;
-      margin-top: 0;
-    }
-    .item-list { list-style: none; }
-    .item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 10px 0;
-      border-bottom: 1px solid var(--border);
-      gap: 10px;
-    }
-    .item:last-child { border-bottom: none; }
-    .item-info { flex: 1; min-width: 0; }
-    .item-name { font-weight: 500; font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .item-meta { font-size: 0.75rem; color: var(--muted); margin-top: 2px; }
-    .item-amount { font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
-    .item-actions { display: flex; gap: 6px; }
-    .icon-btn {
-      background: var(--card2);
-      border: none;
-      color: var(--muted);
-      width: 32px; height: 32px;
-      border-radius: 8px;
-      font-size: 0.9rem;
-      cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-    }
-    .nav {
-      display: flex;
-      justify-content: space-around;
-      padding: 4px 0 8px;
-      gap: 2px;
-      border-top: 1px solid rgba(51,65,85,0.5);
-      margin-top: 4px;
-    }
-    .nav button {
-      background: none;
-      border: none;
-      color: var(--muted);
-      font-size: 0.58rem;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 1px;
-      padding: 6px 2px;
-      cursor: pointer;
-      min-width: 0;
-      flex: 1;
-      border-radius: 10px;
-    }
-    .nav button.active {
-      color: var(--accent);
-      background: rgba(56,189,248,0.12);
-    }
-    .nav button span.icon { font-size: 1.2rem; }
-    .hidden { display: none !important; }
-    .badge {
-      display: inline-block;
-      font-size: 0.7rem;
-      padding: 2px 7px;
-      border-radius: 999px;
-      font-weight: 600;
-    }
-    .badge.green { background: rgba(74,222,128,0.15); color: var(--green); }
-    .badge.amber { background: rgba(251,191,36,0.15); color: var(--amber); }
-    .badge.rose { background: rgba(251,113,133,0.15); color: var(--rose); }
-    .badge.purple { background: rgba(192,132,252,0.15); color: var(--purple); }
-    .badge.sky { background: rgba(56,189,248,0.15); color: var(--accent); }
-    .result-box {
-      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-      border: 1px solid var(--accent);
-      border-radius: var(--radius);
-      padding: 18px;
-      margin-bottom: 14px;
-    }
-    .result-box h3 { font-size: 1rem; margin-bottom: 12px; color: var(--accent); }
-    .result-box.good { border-color: var(--green); }
-    .result-box.good h3 { color: var(--green); }
-    .result-box.warn { border-color: var(--amber); }
-    .result-box.warn h3 { color: var(--amber); }
-    .result-box.bad { border-color: var(--rose); }
-    .result-box.bad h3 { color: var(--rose); }
-    .alloc-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 8px 0;
-      border-bottom: 1px solid rgba(51,65,85,0.6);
-      font-size: 0.92rem;
-    }
-    .alloc-row:last-child { border-bottom: none; }
-    .alloc-row .label { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-    .alloc-row .amt { font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
-    .progress-wrap {
-      margin-top: 8px;
-    }
-    .progress-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 0.72rem;
-      color: var(--muted);
-      margin-bottom: 4px;
-    }
-    .progress-header .pct {
-      font-weight: 700;
-      font-variant-numeric: tabular-nums;
-      color: var(--text);
-    }
-    .progress-bar {
-      height: 10px;
-      background: var(--bg);
-      border-radius: 999px;
-      overflow: hidden;
-      border: 1px solid var(--border);
-    }
-    .progress-fill {
-      height: 100%;
-      background: linear-gradient(90deg, #22c55e, #4ade80);
-      border-radius: 999px;
-      transition: width 0.35s ease;
-      min-width: 0;
-    }
-    .progress-fill.amber { background: linear-gradient(90deg, #d97706, #fbbf24); }
-    .progress-fill.rose { background: linear-gradient(90deg, #e11d48, #fb7185); }
-    .progress-fill.sky { background: linear-gradient(90deg, #0284c7, #38bdf8); }
-    .progress-fill.purple { background: linear-gradient(90deg, #9333ea, #c084fc); }
-    .summary-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      margin-bottom: 14px;
-    }
-    .summary-card {
-      background: var(--card);
-      border-radius: 12px;
-      padding: 12px;
-      border: 1px solid var(--border);
-    }
-    .summary-card .label { font-size: 0.72rem; color: var(--muted); }
-    .summary-card .value { font-size: 1.15rem; font-weight: 700; margin-top: 2px; font-variant-numeric: tabular-nums; }
-    .empty {
-      text-align: center;
-      padding: 24px 12px;
-      color: var(--muted);
-      font-size: 0.9rem;
-    }
-    .modal-overlay {
-      position: fixed; inset: 0;
-      background: rgba(0,0,0,0.65);
-      z-index: 200;
-      display: flex;
-      align-items: flex-end;
-      justify-content: center;
-    }
-    .modal {
-      background: var(--card);
-      border-radius: 20px 20px 0 0;
-      width: 100%;
-      max-width: 520px;
-      padding: 20px 16px calc(20px + var(--safe-bottom));
-      max-height: 85dvh;
-      overflow-y: auto;
-    }
-    .modal h3 { font-size: 1.1rem; margin-bottom: 14px; }
-    .modal-actions { display: flex; gap: 10px; margin-top: 16px; }
-    .phase-toggle {
-      display: flex;
-      background: var(--bg);
-      border-radius: 12px;
-      padding: 4px;
-      margin-bottom: 14px;
-    }
-    .phase-toggle button {
-      flex: 1;
-      border: none;
-      background: transparent;
-      color: var(--muted);
-      padding: 10px 8px;
-      border-radius: 10px;
-      font-size: 0.85rem;
-      font-weight: 500;
-      cursor: pointer;
-    }
-    .phase-toggle button.active {
-      background: var(--accent);
-      color: #0f172a;
-      font-weight: 600;
-    }
-    .tip {
-      font-size: 0.8rem;
-      color: var(--muted);
-      background: rgba(56,189,248,0.08);
-      border-left: 3px solid var(--accent);
-      padding: 10px 12px;
-      border-radius: 0 8px 8px 0;
-      margin-top: 10px;
-    }
-    .tip.good { background: rgba(74,222,128,0.08); border-left-color: var(--green); }
-    .tip.warn { background: rgba(251,191,36,0.08); border-left-color: var(--amber); }
-    .tip.bad { background: rgba(251,113,133,0.08); border-left-color: var(--rose); }
-    .total-line {
-      display: flex;
-      justify-content: space-between;
-      font-weight: 700;
-      font-size: 1.05rem;
-      padding-top: 10px;
-      margin-top: 6px;
-      border-top: 2px solid var(--border);
-    }
-    .delta-up { color: var(--green); }
-    .delta-down { color: var(--rose); }
-    .delta-flat { color: var(--muted); }
-    .audit-history-item {
-      padding: 12px 0;
-      border-bottom: 1px solid var(--border);
-      cursor: pointer;
-    }
-    .audit-history-item:last-child { border-bottom: none; }
-    .audit-history-item .date { font-weight: 600; font-size: 0.95rem; }
-    .audit-history-item .summary { font-size: 0.8rem; color: var(--muted); margin-top: 4px; }
-    .rec-list {
-      list-style: none;
-      margin-top: 10px;
-    }
-    .rec-list li {
-      padding: 8px 0 8px 22px;
-      position: relative;
-      font-size: 0.88rem;
-      border-bottom: 1px solid rgba(51,65,85,0.5);
-    }
-    .rec-list li:last-child { border-bottom: none; }
-    .rec-list li::before {
-      content: "→";
-      position: absolute;
-      left: 0;
-      color: var(--accent);
-      font-weight: 700;
-    }
-    .section-label {
-      font-size: 0.75rem;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-      color: var(--muted);
-      margin: 14px 0 6px;
-      font-weight: 600;
-    }
-  </style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@500;600&display=swap');
+:root {
+  --bg: #0a0b0d;
+  --bg-elevated: #12141a;
+  --card: #16181f;
+  --card2: #1c1f28;
+  --text: #f4f4f5;
+  --muted: #8b8f9a;
+  --accent: #5b8def;
+  --accent-soft: rgba(91,141,239,0.12);
+  --green: #3ecf8e;
+  --amber: #e8b84a;
+  --rose: #f07178;
+  --purple: #a78bfa;
+  --border: rgba(255,255,255,0.06);
+  --border-strong: rgba(255,255,255,0.1);
+  --radius: 12px;
+  --radius-sm: 8px;
+  --shadow: 0 1px 0 rgba(255,255,255,0.04) inset, 0 8px 24px rgba(0,0,0,0.35);
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --font: "DM Sans", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100dvh;
+  padding-bottom: calc(28px + var(--safe-bottom));
+  line-height: 1.45;
+  font-size: 15px;
+  letter-spacing: -0.01em;
+  -webkit-font-smoothing: antialiased;
+}
+header {
+  position: sticky; top: 0; z-index: 50;
+  background: rgba(10,11,13,0.85);
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  padding: calc(12px + var(--safe-top)) 16px 0;
+  border-bottom: 1px solid var(--border);
+}
+header h1 {
+  font-size: 1.05rem; font-weight: 600; letter-spacing: -0.03em;
+}
+header p { font-size: 0.7rem; color: var(--muted); margin-top: 3px; margin-bottom: 10px; font-weight: 450; }
+.container { padding: 14px 16px; max-width: 480px; margin: 0 auto; }
+.card {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 16px 16px 14px;
+  margin-bottom: 12px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+.card h2 {
+  font-size: 0.72rem;
+  font-weight: 600;
+  margin-bottom: 14px;
+  display: flex; align-items: center; gap: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+.card h2 .dot { width: 6px; height: 6px; border-radius: 50%; opacity: 0.9; }
+label {
+  display: block; font-size: 0.72rem; color: var(--muted);
+  margin-bottom: 5px; margin-top: 12px; font-weight: 500; letter-spacing: 0.01em;
+}
+label:first-child { margin-top: 0; }
+input, select, textarea {
+  width: 100%;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+  border-radius: var(--radius-sm);
+  padding: 12px 12px;
+  font-size: 0.95rem;
+  font-family: var(--font);
+  outline: none;
+  -webkit-appearance: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+input:focus, select:focus, textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+input[type="number"] { font-variant-numeric: tabular-nums; font-family: var(--mono); font-size: 0.9rem; }
+input[type="checkbox"] {
+  -webkit-appearance: checkbox; appearance: auto;
+  width: 20px !important; height: 20px; min-width: 20px;
+  padding: 0; margin: 0; border-radius: 4px;
+  accent-color: var(--accent); cursor: pointer; flex-shrink: 0;
+}
+.check-row {
+  display: flex; align-items: center; gap: 10px; margin-top: 12px;
+  padding: 12px 14px; background: var(--bg-elevated);
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  cursor: pointer; font-size: 0.88rem; color: var(--text);
+}
+textarea { min-height: 72px; resize: vertical; }
+.row { display: flex; gap: 10px; }
+.row > * { flex: 1; }
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  background: var(--accent); color: #fff; font-weight: 600;
+  border: none; border-radius: var(--radius-sm);
+  padding: 13px 16px; font-size: 0.9rem; font-family: var(--font);
+  cursor: pointer; width: 100%; margin-top: 14px;
+  letter-spacing: -0.01em;
+  box-shadow: 0 1px 0 rgba(255,255,255,0.12) inset;
+}
+.btn:active { opacity: 0.88; transform: scale(0.99); }
+.btn.secondary {
+  background: var(--card2); color: var(--text);
+  border: 1px solid var(--border-strong); box-shadow: none;
+}
+.btn.danger { background: var(--rose); color: #0a0b0d; }
+.btn.small { width: auto; padding: 7px 12px; font-size: 0.75rem; margin-top: 0; border-radius: 6px; }
+.item-list { list-style: none; }
+.item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 0; border-bottom: 1px solid var(--border); gap: 10px;
+}
+.item:last-child { border-bottom: none; }
+.item-info { flex: 1; min-width: 0; }
+.item-name { font-weight: 550; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.item-meta { font-size: 0.7rem; color: var(--muted); margin-top: 3px; }
+.item-amount { font-weight: 600; font-variant-numeric: tabular-nums; font-family: var(--mono); font-size: 0.85rem; white-space: nowrap; }
+.item-actions { display: flex; gap: 4px; }
+.icon-btn {
+  background: transparent; border: 1px solid var(--border);
+  color: var(--muted); width: 30px; height: 30px; border-radius: 6px;
+  font-size: 0.8rem; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.icon-btn:active { background: var(--card2); color: var(--text); }
+.nav {
+  display: flex; justify-content: space-around; padding: 6px 0 10px; gap: 2px;
+  border-top: 1px solid var(--border); margin-top: 6px;
+}
+.nav button {
+  background: none; border: none; color: var(--muted);
+  font-size: 0.55rem; font-weight: 500; font-family: var(--font);
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 6px 2px; cursor: pointer; min-width: 0; flex: 1; border-radius: 8px;
+  letter-spacing: 0.02em;
+}
+.nav button.active { color: var(--accent); background: var(--accent-soft); }
+.nav button span.icon { font-size: 1.15rem; }
+.hidden { display: none !important; }
+.badge {
+  display: inline-block; font-size: 0.62rem; padding: 2px 7px;
+  border-radius: 4px; font-weight: 600; letter-spacing: 0.03em; text-transform: uppercase;
+}
+.badge.green { background: rgba(62,207,142,0.12); color: var(--green); }
+.badge.amber { background: rgba(232,184,74,0.12); color: var(--amber); }
+.badge.rose { background: rgba(240,113,120,0.12); color: var(--rose); }
+.badge.purple { background: rgba(167,139,250,0.12); color: var(--purple); }
+.badge.sky { background: var(--accent-soft); color: var(--accent); }
+.result-box {
+  background: var(--card); border: 1px solid var(--border-strong);
+  border-radius: var(--radius); padding: 16px; margin-bottom: 12px;
+  border-left: 3px solid var(--accent);
+}
+.result-box h3 { font-size: 0.95rem; margin-bottom: 12px; color: var(--text); font-weight: 600; letter-spacing: -0.02em; }
+.result-box.good { border-left-color: var(--green); }
+.result-box.good h3 { color: var(--green); }
+.result-box.warn { border-left-color: var(--amber); }
+.result-box.warn h3 { color: var(--amber); }
+.result-box.bad { border-left-color: var(--rose); }
+.result-box.bad h3 { color: var(--rose); }
+.alloc-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 0.88rem;
+}
+.alloc-row:last-child { border-bottom: none; }
+.alloc-row .label { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; color: var(--muted); }
+.alloc-row .amt { font-weight: 600; font-variant-numeric: tabular-nums; font-family: var(--mono); font-size: 0.82rem; white-space: nowrap; color: var(--text); }
+.progress-wrap { margin-top: 8px; }
+.progress-header {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 0.68rem; color: var(--muted); margin-bottom: 5px;
+}
+.progress-header .pct { font-weight: 600; font-variant-numeric: tabular-nums; font-family: var(--mono); color: var(--text); }
+.progress-bar {
+  height: 4px; background: var(--bg-elevated); border-radius: 999px; overflow: hidden;
+}
+.progress-fill {
+  height: 100%; background: var(--green); border-radius: 999px;
+  transition: width 0.35s ease; min-width: 0;
+}
+.progress-fill.amber { background: var(--amber); }
+.progress-fill.rose { background: var(--rose); }
+.progress-fill.sky { background: var(--accent); }
+.progress-fill.purple { background: var(--purple); }
+.summary-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 4px;
+}
+.summary-card {
+  background: var(--bg-elevated); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 12px 12px 10px;
+}
+.summary-card .label {
+  font-size: 0.62rem; color: var(--muted); text-transform: uppercase;
+  letter-spacing: 0.05em; margin: 0 0 6px; font-weight: 500;
+}
+.summary-card .value {
+  font-size: 1.15rem; font-weight: 600; font-variant-numeric: tabular-nums;
+  font-family: var(--mono); letter-spacing: -0.02em; line-height: 1.2;
+}
+.tip { font-size: 0.75rem; color: var(--muted); margin-top: 8px; line-height: 1.4; }
+.tip.bad { color: var(--rose); }
+.section-label {
+  font-size: 0.68rem; font-weight: 600; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.06em;
+  margin: 14px 0 8px; padding-top: 4px;
+}
+.total-line {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border-strong);
+  font-weight: 600; font-size: 0.9rem;
+}
+.total-line span:last-child { font-family: var(--mono); font-size: 0.85rem; }
+.empty { color: var(--muted); font-size: 0.85rem; padding: 8px 0; font-style: normal; }
+.phase-toggle { display: flex; gap: 6px; background: var(--bg-elevated); padding: 3px; border-radius: 8px; }
+.phase-toggle button {
+  flex: 1; border: none; background: transparent; color: var(--muted);
+  padding: 8px; border-radius: 6px; font-size: 0.8rem; font-family: var(--font); cursor: pointer;
+}
+.phase-toggle button.active { background: var(--card); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 100;
+  display: flex; align-items: flex-end; justify-content: center;
+  backdrop-filter: blur(4px);
+}
+.modal {
+  background: var(--card); width: 100%; max-width: 520px;
+  border-radius: 16px 16px 0 0; padding: 20px 16px calc(20px + var(--safe-bottom));
+  max-height: 90dvh; overflow-y: auto; border: 1px solid var(--border-strong); border-bottom: none;
+}
+.modal h3 { font-size: 1.05rem; margin-bottom: 14px; font-weight: 600; letter-spacing: -0.02em; }
+</style>
 </head>
 <body>
   <header>
     <h1>Paycheck Planner</h1>
-    <p id="header-sub">Build cushion → then attack debt</p>
     <nav class="nav">
-      <button class="active" data-tab="allocate" onclick="switchTab('allocate')">
-        <span class="icon">💵</span> Allocate
-      </button>
-      <button data-tab="audit" onclick="switchTab('audit')">
-        <span class="icon">📊</span> Audit
-      </button>
-      <button data-tab="budget" onclick="switchTab('budget')">
-        <span class="icon">🏠</span> Budget
-      </button>
-      <button data-tab="goals" onclick="switchTab('goals')">
-        <span class="icon">🎯</span> Goals
-      </button>
-      <button data-tab="log" onclick="switchTab('log')">
-        <span class="icon">📓</span> Log
-      </button>
-      <button data-tab="pay" onclick="switchTab('pay')">
-        <span class="icon">🧮</span> Pay
-      </button>
-      <button data-tab="sim" onclick="switchTab('sim')">
-        <span class="icon">🔮</span> Sim
-      </button>
-      <button data-tab="settings" onclick="switchTab('settings')">
-        <span class="icon">⚙️</span> More
-      </button>
+      <button class="active" data-tab="dashboard" onclick="switchTab('dashboard')">Home</button>
+      <button data-tab="allocate" onclick="switchTab('allocate')">Allocate</button>
+      <button data-tab="budget" onclick="switchTab('budget')">Budget</button>
+      <button data-tab="audit" onclick="switchTab('audit')">Check-in</button>
+      <button data-tab="pay" onclick="switchTab('pay')">Pay</button>
+      <button data-tab="sim" onclick="switchTab('sim')">Sim</button>
+      <button data-tab="settings" onclick="switchTab('settings')">More</button>
     </nav>
   </header>
 
   <div class="container">
+    <!-- ========== DASHBOARD (read-only glance) ========== -->
+    <div id="tab-dashboard">
+      <div id="dashboard-view"></div>
+    </div>
+
     <!-- ========== ALLOCATE TAB ========== -->
-    <div id="tab-allocate">
+    <div id="tab-allocate" class="hidden">
       <div class="card" id="coming-up-card">
         <h2><span class="dot" style="background:var(--amber)"></span> Coming Up</h2>
         <div id="coming-up-list"></div>
@@ -433,10 +283,7 @@
 
       <div class="card">
         <h2><span class="dot" style="background:var(--accent)"></span> Deposit & auto-allocate</h2>
-        <p style="font-size:0.8rem;color:var(--muted);margin-bottom:10px;">
-          Enter this deposit. The app funds what’s due (mortgage, bills, debt mins), then your monthly goal amounts, then leftover stays in checking. No 50/50 choices.
-        </p>
-        <label>Which deposit is this?</label>
+                <label>Which deposit is this?</label>
         <select id="paycheck-type" onchange="onPaycheckTypeChange()">
           <option value="advance">Advance — 25th ($3,000 flat)</option>
           <option value="main">Main paycheck — 10th</option>
@@ -467,27 +314,20 @@
         <select id="move-goal">
           <option value="">— No goal / just move —</option>
         </select>
-        <p class="tip" id="move-hint" style="margin-top:8px;">Updates app balances to match what you’ll do in the bank.</p>
         <button type="button" class="btn secondary" id="btn-move-money" style="margin-top:10px;">Move money</button>
         <div id="move-result" class="hidden" style="margin-top:12px;"></div>
       </div>
 
       <div class="card">
-        <h2><span class="dot" style="background:var(--amber)"></span> Current Mode</h2>
-        <div class="phase-toggle">
-          <button id="phase-cushion" class="active" onclick="setPhase('cushion')">1. Build Cushion</button>
-          <button id="phase-debt" onclick="setPhase('debt')">2. Attack Debt</button>
-        </div>
-        <p class="tip" id="phase-tip">Right now: cover minimums + fund goals (Projects / Savings) at your monthly rate.</p>
-        <div id="aggression-panel" class="hidden">
-          <label style="margin-top:12px;">Debt aggression — how much extra goes to debt vs kept</label>
-          <input type="range" id="debt-aggression" min="0" max="100" step="5" value="70" oninput="onAggressionChange(this.value)" style="width:100%;accent-color:var(--rose);" />
-          <div style="display:flex;justify-content:space-between;font-size:0.8rem;margin-top:6px;">
-            <span style="color:var(--muted)">Keep more</span>
-            <span id="aggression-label" style="font-weight:600;color:var(--rose)">70% to debt</span>
-            <span style="color:var(--muted)">Max debt</span>
+        <h2><span class="dot" style="background:var(--amber)"></span> Paycheck plan</h2>
+        <div id="aggression-panel">
+          <label>Leftover → debt snowball</label>
+          <input type="range" id="debt-aggression" min="0" max="100" step="5" value="100" oninput="onAggressionChange(this.value)" style="width:100%;accent-color:var(--rose);" />
+          <div style="display:flex;justify-content:space-between;font-size:0.75rem;margin-top:6px;">
+            <span style="color:var(--muted)">0%</span>
+            <span id="aggression-label" style="font-weight:600;color:var(--rose)">100% to debt</span>
+            <span style="color:var(--muted)">100%</span>
           </div>
-          <p class="tip" id="aggression-readout" style="margin-top:8px;">After required bills, this % of leftover attacks debt. The rest stays as buffer.</p>
         </div>
       </div>
 
@@ -495,46 +335,37 @@
     </div>
 
     <!-- ========== LOG TAB ========== -->
-    <div id="tab-log" class="hidden">
-      <div class="card">
-        <h2><span class="dot" style="background:var(--green)"></span> Monthly log</h2>
-        <p style="font-size:0.8rem;color:var(--muted);margin-bottom:12px;">
-          History of money saved, debt paid, and unexpected costs. Savings/debt update when you apply a paycheck; log surprises on the <strong>Audit</strong> tab during your weekly check-in.
-        </p>
-      </div>
-      <div id="log-list"></div>
-    </div>
-
-    <!-- ========== PAY CALC TAB ========== -->
     <!-- ========== SIMULATE TAB ========== -->
     <div id="tab-sim" class="hidden">
       <div class="card">
         <h2><span class="dot" style="background:var(--purple)"></span> What-if simulator</h2>
-        <p style="font-size:0.8rem;color:var(--muted);margin-bottom:10px;">
-          Project paychecks and savings forward. <strong>Does not change</strong> your real account balances — sandbox only.
-        </p>
-        <div class="section-label">Starting balances (sandbox)</div>
-        <p class="tip">Pre-filled from today. Edit freely — live accounts stay untouched.</p>
+                <div class="section-label">Starting balances (sandbox)</div>
         <div id="sim-start-balances"></div>
         <button class="btn secondary" onclick="simLoadFromLive()">Reload from live accounts</button>
 
-        <div class="section-label">Pay assumptions</div>
+        <div class="section-label">What to simulate</div>
+        <label>Mode</label>
+        <select id="sim-mode" onchange="onSimModeChange()">
+          <option value="paycheck-25">Next paycheck only — 25th advance → until 10th</option>
+          <option value="paycheck-10">Next paycheck only — 10th main → until 25th</option>
+          <option value="months">Full months (both checks each month)</option>
+        </select>
+
+        <div class="section-label">Pay amounts</div>
         <label>Typical main check net (10th) $</label>
         <input type="number" id="sim-main-net" inputmode="decimal" step="0.01" min="0" placeholder="e.g. 8500" />
         <label>Advance (25th) $</label>
         <input type="number" id="sim-advance" inputmode="decimal" step="0.01" min="0" value="3000" />
-        <label>Months to project</label>
-        <input type="number" id="sim-months" inputmode="numeric" min="1" max="60" value="6" />
+        <div id="sim-months-wrap">
+          <label>Months to project</label>
+          <input type="number" id="sim-months" inputmode="numeric" min="1" max="60" value="6" />
+        </div>
 
-        <div class="section-label">Monthly living costs</div>
-        <p class="tip">From Budget: housing + bills + debt minimums. Edit if you want a different assumption.</p>
-        <label>Housing + bills + debt mins $</label>
+        <div class="section-label" id="sim-costs-label">Costs for this window</div>
+        <label id="sim-fixed-label">Bills / housing / debt mins due this window $</label>
         <input type="number" id="sim-fixed" inputmode="decimal" step="0.01" min="0" />
-        <label>Allowance total per check (×2 per month) $</label>
+        <label id="sim-allow-label">Allowance this check $</label>
         <input type="number" id="sim-allowance" inputmode="decimal" step="0.01" min="0" value="750" />
-        <p class="tip" style="margin-top:10px;">
-          <strong>Order each month:</strong> 1) Living costs → 2) All leftover to goals by priority (#1 first until target, then #2…) → 3) Anything left to debt (after mins). No free sliders.
-        </p>
 
         <button class="btn" onclick="runSimulation()">Run simulation</button>
       </div>
@@ -543,77 +374,32 @@
 
     <div id="tab-pay" class="hidden">
       <div class="card">
-        <h2><span class="dot" style="background:var(--accent)"></span> Firefighter paycheck (CCC / 56-hr)</h2>
-        <p style="font-size:0.8rem;color:var(--muted);margin-bottom:10px;">
-          Tuned from your Contra Costa County Fire stub. OT &amp; holiday pay at <strong>1.5×</strong>. Federal holidays = <strong>12 OT hours each</strong>. Defaults match Aug 2026 rates/deductions.
-        </p>
+        <h2><span class="dot" style="background:var(--accent)"></span> Estimate net pay</h2>
         <label>Which check?</label>
         <select id="pay-which">
-          <option value="main">Main (10th) — may include advance payback</option>
-          <option value="advance">Advance (25th) — flat $3,000</option>
+          <option value="main">Main (10th)</option>
+          <option value="advance">Advance (25th) — $3,000</option>
         </select>
-        <div class="section-label">Earnings</div>
-        <label>Hourly rate ($)</label>
-        <input type="number" id="pay-rate" inputmode="decimal" step="0.01" min="0" value="42.56" />
-        <p class="tip">From your stub OT line (~$6,528 ÷ 102.25 hrs ÷ 1.5).</p>
-        <label>Regular / scheduled pay this period ($)</label>
-        <input type="number" id="pay-regular" inputmode="decimal" step="0.01" min="0" value="10328.74" />
-        <label>OT hours @ 1.5× (not including holidays)</label>
+        <label>OT hours @ 1.5×</label>
         <input type="number" id="pay-ot-hours" inputmode="decimal" step="0.25" min="0" value="0" />
-        <label>Federal holidays in period</label>
-        <input type="number" id="pay-holidays" inputmode="numeric" min="0" max="10" value="0" />
-        <p class="tip">Each holiday adds 12 hours @ 1.5× (holiday pay).</p>
-        <label>FLSA scheduled / additional ($)</label>
-        <input type="number" id="pay-flsa" inputmode="decimal" step="0.01" min="0" value="212.77" />
-        <label>Uniform allowance ($)</label>
-        <input type="number" id="pay-uniform" inputmode="decimal" step="0.01" min="0" value="54.50" />
-        <label>Other earnings ($)</label>
-        <input type="number" id="pay-other-earn" inputmode="decimal" step="0.01" min="0" value="0" />
-
-        <div class="section-label">Before-tax deductions</div>
-        <label>Medical (PERS Kaiser) ($)</label>
-        <input type="number" id="pay-med" inputmode="decimal" step="0.01" min="0" value="640.17" />
-        <label>Vision (VSP) ($)</label>
-        <input type="number" id="pay-vision" inputmode="decimal" step="0.01" min="0" value="17.10" />
-        <label>Dental ($)</label>
-        <input type="number" id="pay-dental" inputmode="decimal" step="0.01" min="0" value="11.49" />
-        <label>Retirement / PERS ($)</label>
-        <input type="number" id="pay-retirement" inputmode="decimal" step="0.01" min="0" value="1691.85" />
-        <label>Other pre-tax ($)</label>
-        <input type="number" id="pay-pretax-other" inputmode="decimal" step="0.01" min="0" value="0" />
-
-        <div class="section-label">After-tax deductions</div>
-        <label class="check-row" for="pay-advance-payback">
-          <input type="checkbox" id="pay-advance-payback" checked />
-          <span>Advance payback $3,000 (on the 10th check)</span>
-        </label>
-        <label>Union dues ($)</label>
-        <input type="number" id="pay-union" inputmode="decimal" step="0.01" min="0" value="177.20" />
-        <label>Roth / after-tax DC ($)</label>
-        <input type="number" id="pay-roth" inputmode="decimal" step="0.01" min="0" value="200.00" />
-        <label>AD&amp;D / life / Hlth &amp; Welfare ($)</label>
-        <input type="number" id="pay-other-post" inputmode="decimal" step="0.01" min="0" value="47.08" />
-
-        <div class="section-label">Taxes (from your stub)</div>
         <label class="check-row" for="pay-fed-exempt">
           <input type="checkbox" id="pay-fed-exempt" />
-          <span>Federal withholding exempt</span>
+          <span>Federal tax exempt</span>
         </label>
         <label class="check-row" for="pay-ca-exempt">
           <input type="checkbox" id="pay-ca-exempt" />
-          <span>California state withholding exempt</span>
+          <span>California tax exempt</span>
         </label>
-        <label>Federal withholding %</label>
-        <input type="number" id="pay-fed-pct" inputmode="decimal" step="0.1" min="0" max="50" value="12.0" />
-        <label>CA state withholding %</label>
-        <input type="number" id="pay-state-pct" inputmode="decimal" step="0.1" min="0" max="20" value="5.5" />
-        <label>Medicare EE % (Fed MED/EE)</label>
-        <input type="number" id="pay-medicare-pct" inputmode="decimal" step="0.01" min="0" max="5" value="1.62" />
-        <p class="tip">Stub Aug 2026: Fed ~12% of taxable, CA ~5.5%, Medicare EE ~1.62%. Turn on exemption to zero that tax line.</p>
-
         <button class="btn" onclick="calculatePaycheck()">Calculate net pay</button>
-        <button class="btn secondary" onclick="usePayInAllocate()">Use net on Allocate tab</button>
+        <button class="btn secondary" onclick="usePayInAllocate()">Use net on Allocate</button>
       </div>
+
+      <div class="card">
+        <h2><span class="dot" style="background:var(--rose)"></span> OT needed for minimums</h2>
+        <button class="btn secondary" onclick="calcOtNeededForMinimums()">Calculate</button>
+        <div id="ot-needed-result" class="hidden" style="margin-top:12px;"></div>
+      </div>
+
       <div id="pay-result" class="hidden"></div>
     </div>
 
@@ -621,10 +407,7 @@
     <div id="tab-audit" class="hidden">
       <div class="card">
         <h2><span class="dot" style="background:var(--purple)"></span> Weekly Check-in</h2>
-        <p style="font-size:0.8rem;color:var(--muted);margin-bottom:12px;">
-          Update account and debt balances (e.g. every Friday). Variable bills stay on Budget — change those monthly when the bill arrives.
-        </p>
-        <label>Audit date</label>
+                <label>Audit date</label>
         <input type="date" id="audit-date" />
         <div id="audit-form-fields"></div>
         <label>Notes (optional)</label>
@@ -634,19 +417,13 @@
 
       <div class="card">
         <h2><span class="dot" style="background:var(--sky, var(--accent))"></span> Paste balance snapshot</h2>
-        <p style="font-size:0.8rem;color:var(--muted);margin-bottom:8px;">
-          Ask Grok for a bank snapshot, then paste it here to fill account (and matching) balances. One line per item, e.g. <code>Bills: 1234.56</code>
-        </p>
-        <textarea id="audit-import-text" placeholder="Bills: 356.31&#10;Trents Pocket: 0.02&#10;Bri’s Pocket: 50.00&#10;Mortgage: 5.04&#10;Projects: 100.00&#10;Savings / EF: 4.42&#10;Buffer: 0.00&#10;VISA Platinum: 9855.78"></textarea>
+                <textarea id="audit-import-text" placeholder="Bills: 356.31&#10;Trents Pocket: 0.02&#10;Bri’s Pocket: 50.00&#10;Mortgage: 5.04&#10;Projects: 100.00&#10;Savings / EF: 4.42&#10;Buffer: 0.00&#10;VISA Platinum: 9855.78"></textarea>
         <button class="btn secondary" onclick="importBalanceSnapshot()">Apply pasted balances</button>
       </div>
 
       <div class="card">
         <h2><span class="dot" style="background:var(--amber)"></span> Unexpected costs</h2>
-        <p style="font-size:0.8rem;color:var(--muted);margin-bottom:10px;">
-          Log any time — no full audit needed. Each entry is added to this month’s Log. Add as many as you need.
-        </p>
-        <label>Date</label>
+                <label>Date</label>
         <input type="date" id="unexpected-date" />
         <label>Amount ($)</label>
         <input type="number" id="unexpected-amt" inputmode="decimal" step="0.01" min="0" placeholder="0.00" />
@@ -660,23 +437,24 @@
 
       <div class="card">
         <h2><span class="dot" style="background:var(--green)"></span> Extra cash check</h2>
-        <p style="font-size:0.8rem;color:var(--muted);margin-bottom:10px;">
-          After you allocate, check the <strong>Bills</strong> account: balance minus unpaid bills/debt mins left till next paycheck = <strong>overage</strong> you can move to Projects, Savings, or spending.
-        </p>
-        <label style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+                <label style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
           <input type="checkbox" id="audit-just-paid" style="width:auto;" onchange="onJustPaidToggle()" />
-          <span>Got paid today — count through the <strong>next</strong> payday (e.g. skip the 10th → use the 25th)</span>
+          <span>Got paid today — count through the <strong>next</strong> payday (e.g. 25th → next 10th)</span>
         </label>
+        <label style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+          <input type="checkbox" id="audit-include-deposit" style="width:auto;" checked onchange="onJustPaidToggle()" />
+          <span>Include this deposit in Bills (bills the check is meant to cover)</span>
+        </label>
+        <label>Deposit amount to include ($)</label>
+        <input type="number" id="audit-deposit-amt" inputmode="decimal" step="0.01" min="0" value="3000" />
+        <p class="tip" style="margin-bottom:12px;">Overage = Bills (+ deposit if checked) − unpaid bills due before next paycheck.</p>
         <button class="btn secondary" onclick="checkExtraCash()">Check extra cash</button>
         <div id="extra-cash-result" class="hidden" style="margin-top:12px;"></div>
       </div>
 
       <div class="card">
         <h2><span class="dot" style="background:var(--accent)"></span> Weekly report</h2>
-        <p style="font-size:0.8rem;color:var(--muted);margin-bottom:10px;">
-          One report to send — extra cash, days to payday, pockets, balances, and debt.
-        </p>
-        <button class="btn" onclick="generateShareReport()">Generate report</button>
+                <button class="btn" onclick="generateShareReport()">Generate report</button>
         <button class="btn secondary" id="btn-copy-report" style="display:none;margin-top:8px;" onclick="copyShareReport()">Copy to Clipboard</button>
         <button class="btn secondary" id="btn-share-report" style="display:none;margin-top:8px;" onclick="nativeShareReport()">Share…</button>
         <pre id="share-report-preview" class="hidden" style="margin-top:12px;padding:12px;background:var(--bg);border-radius:10px;font-size:0.78rem;white-space:pre-wrap;word-break:break-word;max-height:320px;overflow-y:auto;border:1px solid var(--border);color:var(--text);"></pre>
@@ -686,9 +464,14 @@
         <h2><span class="dot" style="background:var(--muted)"></span> Past Audits</h2>
         <div id="audit-history"></div>
       </div>
+
+      <div class="card">
+        <h2><span class="dot" style="background:var(--green)"></span> Monthly log</h2>
+              </div>
+      <div id="log-list"></div>
     </div>
 
-    <!-- ========== BUDGET TAB ========== -->
+    <!-- ========== BUDGET + GOALS TAB ========== -->
     <div id="tab-budget" class="hidden">
       <div class="card">
         <h2><span class="dot" style="background:var(--green)"></span> Housing</h2>
@@ -697,45 +480,29 @@
       </div>
       <div class="card">
         <h2><span class="dot" style="background:var(--accent)"></span> Recurring Bills</h2>
-        <p style="font-size:0.8rem;color:var(--muted);margin-bottom:10px;">
-          Mark utilities as <strong>Variable</strong> so you can update gas, electric, water, etc. each month (💵 button or weekly audit).
-        </p>
-        <ul class="item-list" id="list-bills"></ul>
+                <ul class="item-list" id="list-bills"></ul>
         <button class="btn secondary small" onclick="openModal('bills')">+ Add Bill</button>
       </div>
       <div class="card">
         <h2><span class="dot" style="background:var(--purple)"></span> Between-check allowance</h2>
-        <p style="font-size:0.8rem;color:var(--muted);margin-bottom:10px;">
-          Funded each paycheck (10th &amp; 25th), not monthly. Default plan: <strong>$750</strong> total.
-        </p>
-        <div id="allowance-total" style="font-size:1.1rem;font-weight:700;margin-bottom:10px;color:var(--accent);"></div>
+                <div id="allowance-total" style="font-size:1.1rem;font-weight:700;margin-bottom:10px;color:var(--accent);"></div>
         <ul class="item-list" id="list-everyday"></ul>
         <button class="btn secondary small" onclick="openModal('everyday')">+ Add Category</button>
       </div>
       <div class="card">
-        <h2><span class="dot" style="background:var(--rose)"></span> Debts</h2>
-        <p style="font-size:0.8rem;color:var(--muted);margin-bottom:10px;">Credit cards first after savings goals. Minimums always paid. Combined here with Budget so the top tabs fit on one row.</p>
-        <ul class="item-list" id="list-debts"></ul>
+        <h2><span class="dot" style="background:var(--rose)"></span> Debts (snowball)</h2>
+                <ul class="item-list" id="list-debts"></ul>
         <button class="btn secondary small" onclick="openModal('debts')">+ Add Debt</button>
+        <button class="btn secondary small" onclick="autoSnowballOrder()" style="margin-left:8px;">Sort by smallest balance</button>
       </div>
-    </div>
-
-    <!-- ========== GOALS TAB ========== -->
-    <div id="tab-goals" class="hidden">
       <div class="card">
-        <h2><span class="dot" style="background:var(--green)"></span> Cash Cushion & Goals</h2>
-        <p style="font-size:0.8rem;color:var(--muted);margin-bottom:10px;">
-          Use <strong>⭐</strong> to set the Primary goal (home progress). <strong>↑↓</strong> sets funding order (#1 first). Each goal tracks its own saved amount.
-        </p>
-        <ul class="item-list" id="list-goals"></ul>
+        <h2><span class="dot" style="background:var(--green)"></span> Goals</h2>
+                <ul class="item-list" id="list-goals"></ul>
         <button class="btn secondary small" onclick="openModal('goals')">+ Add Goal</button>
       </div>
       <div class="card">
         <h2><span class="dot" style="background:var(--accent)"></span> Bank Accounts</h2>
-        <p style="font-size:0.8rem;color:var(--muted);margin-bottom:10px;">
-          Drag ⠿ or use ↑↓ to reorder. Tap 💵 to update balances. Goals keep <strong>their own</strong> saved amounts — a linked account is only where deposits go (not shared as every goal’s balance).
-        </p>
-        <ul class="item-list" id="list-accounts"></ul>
+                <ul class="item-list" id="list-accounts"></ul>
       </div>
       <div class="card">
         <h2><span class="dot" style="background:var(--amber)"></span> Income Sources</h2>
@@ -748,20 +515,12 @@
     <div id="tab-settings" class="hidden">
       <div class="card">
         <h2>Pay Schedule</h2>
-        <p style="font-size:0.8rem;color:var(--muted);margin-bottom:10px;">
-          Still labeled <strong>10th</strong> (main) and <strong>25th</strong> (advance). Deposit hits the credit union on the <strong>business day before</strong> (skips weekends &amp; federal holidays).
-        </p>
-        <label>Advance amount on the 25th ($)</label>
+                <label>Advance amount on the 25th ($)</label>
         <input type="number" id="setting-advance-amount" inputmode="decimal" step="0.01" min="0" onchange="setAdvanceAmount(this.value)" />
-        <p class="tip" style="margin-top:10px;">Pre-fills when you select “Advance” on the Allocate tab.</p>
       </div>
       <div class="card">
         <h2>Money routing</h2>
-        <p style="font-size:0.8rem;color:var(--muted);margin-bottom:10px;">
-          <strong>Deposit to</strong> = where the paycheck lands, then slices move.<br>
-          <strong>Pay from</strong> = account drained when you tap ✅ Paid.<br>
-          <strong>Allowance</strong> = each between-check category (groceries, Bri, Trent, etc.).
-        </p>
+        <p class="tip" style="margin-bottom:10px;"><strong>Deposit to</strong> = paycheck lands · <strong>Pay from</strong> = ✅ Paid drains this.</p>
         <div id="routing-fields"></div>
         <button class="btn secondary" style="margin-top:12px" onclick="saveRoutingFromForm()">Save routing</button>
       </div>
@@ -777,7 +536,6 @@
           <option value="5">Friday</option>
           <option value="6">Saturday</option>
         </select>
-        <p class="tip" style="margin-top:10px;">Shown in Coming Up. Export below adds real alerts in Apple Calendar.</p>
         <button class="btn secondary" style="margin-top:12px" onclick="exportCalendar()">Export Calendar (.ics)</button>
         <p style="font-size:0.75rem;color:var(--muted);margin-top:8px;">
           Opens/downloads an .ics file with upcoming bill due dates, pay days, + weekly audit for the next 3 months.
@@ -797,7 +555,7 @@
           <strong>How it works:</strong><br>
           1. Add housing, bills (with due days), debts, and goals.<br>
           2. Enter a paycheck and generate the split plan.<br>
-          3. Build the house + baby cushion, then attack credit cards.<br>
+          3. Goals by priority ($/mo each), then leftover % to debt.<br>
           4. Mark bills paid with ✅ as you pay them.<br>
           5. Weekly Audit + share report with your wife.<br>
           6. Export calendar for real iPhone alerts.
@@ -830,8 +588,8 @@
       bills: [],
       debts: [],
       goals: [
-        { id: 'savings', name: 'Projects', target: 10000, current: 0, isPrimary: true, monthlyContribute: 200, accountId: 'acct-misc' },
-        { id: 'wedding', name: 'Savings / EF', target: 5000, current: 0, isPrimary: false, monthlyContribute: 0, accountId: 'acct-savings' }
+        { id: 'savings', name: 'Electrical panel / Projects', target: 10000, current: 0, isPrimary: true, monthlyContribute: 400, accountId: 'acct-misc', goalType: 'critical' },
+        { id: 'wedding', name: 'Baby / birth cushion', target: 5000, current: 0, isPrimary: false, monthlyContribute: 200, accountId: 'acct-savings', goalType: 'emergency' }
       ],
       // Per-paycheck allowance (between checks) — matches family $750 plan
       everyday: [
@@ -863,7 +621,7 @@
         leftover: { to: 'acct-bills', payFrom: 'acct-bills' },
         goals: { to: 'acct-misc', payFrom: 'acct-misc' }
       },
-      debtAggression: 70, // 0–100: % of discretionary money that attacks debt
+      debtAggression: 100, // 0–100: % of leftover after Critical/Emergency → snowball
       monthlyLogs: [],
       audits: []
     };
@@ -991,6 +749,12 @@
         if (merged.goals && Array.isArray(merged.goals)) {
           merged.goals.forEach(g => {
             if (g.monthlyContribute == null) g.monthlyContribute = g.isPrimary ? 200 : 0;
+            // Goal types: critical | emergency | want
+            if (!g.goalType) {
+              if (/panel|electrical|insurance|critical|project/i.test(g.name || '') || g.id === 'savings' || g.isPrimary) g.goalType = 'critical';
+              else if (/baby|birth|emergency|cushion|wedding|savings\s*\/?\s*ef/i.test(g.name || '') || g.id === 'wedding') g.goalType = 'emergency';
+              else g.goalType = 'want';
+            }
             if (g.isPrimary || g.id === 'cushion' || /house|baby|cushion/i.test(g.name || '')) {
               g.id = g.id === 'cushion' ? 'savings' : g.id;
               g.isPrimary = true;
@@ -1000,18 +764,30 @@
                 g.name = 'Projects';
               }
             }
-            if (g.id === 'wedding' || /wedding|emergency|savings\s*\/?\s*ef/i.test(g.name || '')) {
-              if (/wedding|emergency/i.test(g.name || '') || g.id === 'wedding') g.name = 'Savings / EF';
+            if (g.goalType === 'emergency' || g.id === 'wedding' || /baby|birth|emergency|wedding|savings\s*\/?\s*ef/i.test(g.name || '')) {
               g.accountId = g.accountId || 'acct-savings';
+              g.goalType = g.goalType || 'emergency';
             }
           });
+          // Sort goals: critical first, then emergency, then want
+          const typeOrder = { critical: 0, emergency: 1, want: 2 };
+          merged.goals.sort((a, b) => (typeOrder[a.goalType] ?? 2) - (typeOrder[b.goalType] ?? 2));
           if (!merged.goals.some(g => g.isPrimary)) {
-            merged.goals.unshift({ id: 'savings', name: 'Projects', target: 10000, current: 0, isPrimary: true, monthlyContribute: 200, accountId: 'acct-misc' });
+            merged.goals.unshift({ id: 'savings', name: 'Electrical panel / Projects', target: 10000, current: 0, isPrimary: true, monthlyContribute: 400, accountId: 'acct-misc', goalType: 'critical' });
           }
-          if (!merged.goals.some(g => g.id === 'wedding' || /wedding|savings\s*\/?\s*ef/i.test(g.name || ''))) {
-            merged.goals.push({ id: 'wedding', name: 'Savings / EF', target: 5000, current: 0, isPrimary: false, monthlyContribute: 0, accountId: 'acct-savings' });
+          if (!merged.goals.some(g => g.goalType === 'emergency')) {
+            merged.goals.push({ id: 'wedding', name: 'Baby / birth cushion', target: 5000, current: 0, isPrimary: false, monthlyContribute: 200, accountId: 'acct-savings', goalType: 'emergency' });
           }
         }
+        // Debt snowball order (smallest balance first if unset)
+        if (merged.debts && Array.isArray(merged.debts)) {
+          const needsOrder = merged.debts.some(d => d.snowballOrder == null);
+          if (needsOrder) {
+            const sorted = [...merged.debts].sort((a, b) => (Number(a.balance) || 0) - (Number(b.balance) || 0));
+            sorted.forEach((d, i) => { d.snowballOrder = i + 1; });
+          }
+        }
+        if (merged.debtAggression == null) merged.debtAggression = 100;
         return merged;
       } catch {
         return structuredClone(DEFAULT);
@@ -1029,20 +805,197 @@
 
     // ========== TABS ==========
     function switchTab(name) {
-      ['allocate','audit','budget','goals','log','pay','sim','settings'].forEach(t => {
+      // Legacy aliases after tab merge
+      if (name === 'goals') name = 'budget';
+      if (name === 'log') name = 'audit';
+      ['dashboard','allocate','audit','budget','pay','sim','settings'].forEach(t => {
         const el = document.getElementById('tab-' + t);
         if (el) el.classList.toggle('hidden', t !== name);
       });
       document.querySelectorAll('.nav button').forEach(b => {
         b.classList.toggle('active', b.dataset.tab === name);
       });
+      if (name === 'dashboard') renderDashboard();
       if (name === 'allocate') updateQuickStats();
       if (name === 'audit') {
         prepareAuditForm();
         renderUnexpectedRecent();
+        renderMonthlyLog();
       }
-      if (name === 'log') renderMonthlyLog();
       if (name === 'sim') prepareSimForm();
+    }
+
+    /** Read-only glance view — no buttons, just numbers that matter */
+    function renderDashboard() {
+      const el = document.getElementById('dashboard-view');
+      if (!el) return;
+      ensurePermanentAccounts(state);
+      syncCushionGoalFromAccount();
+
+      const payday = typeof nextPaydayInfo === 'function' ? nextPaydayInfo() : null;
+      const bills = getAccountById('acct-bills');
+      const mortgage = getAccountById('acct-mortgage');
+      const projects = getAccountById('acct-misc');
+      const savings = getAccountById('acct-savings');
+      const buffer = getAccountById('acct-spending');
+      const trent = getAccountById('acct-trent');
+      const bri = getAccountById('acct-bri');
+      const billsBal = bills ? (Number(bills.balance) || 0) : 0;
+      const mortBal = mortgage ? (Number(mortgage.balance) || 0) : 0;
+
+      const monthlyHousing = sum(state.housing || [], 'amount');
+      const monthlyBills = sum(state.bills || [], 'amount');
+      const monthlyDebtMin = sum(state.debts || [], 'minPayment');
+      const allowPerCheck = sum(state.everyday || [], 'amount');
+      const monthlyFixed = round2(monthlyHousing + monthlyBills + monthlyDebtMin);
+      const monthlyMinWithAllow = round2(monthlyFixed + allowPerCheck * 2);
+
+      const debts = state.debts || [];
+      let creditDebt = 0, vehicleDebt = 0, otherDebt = 0;
+      debts.forEach(d => {
+        const bal = Number(d.balance) || 0;
+        const t = (d.type || '').toLowerCase();
+        const n = (d.name || '').toLowerCase();
+        if (t === 'credit' || /visa|mastercard|amex|discover|platinum|credit\s*card|\bcc\b/.test(n)) creditDebt += bal;
+        else if (t === 'auto' || /chevy|chevrolet|silverado|ford|toyota|honda|truck|auto|car|vehicle|dutc|rv|trailer|camper/.test(n)) vehicleDebt += bal;
+        else otherDebt += bal;
+      });
+      const totalDebt = creditDebt + vehicleDebt + otherDebt;
+
+      const goals = state.goals || [];
+      const primary = goals.find(g => g.isPrimary) || goals[0];
+      const primaryCur = primary ? (Number(primary.current) || 0) : 0;
+      const primaryTgt = primary ? (Number(primary.target) || 0) : 0;
+      const primaryPct = primaryTgt > 0 ? Math.min(100, Math.round((primaryCur / primaryTgt) * 1000) / 10) : 0;
+
+      let ot = null;
+      try { ot = typeof computeOtNeededSummary === 'function' ? computeOtNeededSummary() : null; } catch (e) {}
+
+      let extra = null;
+      try {
+        const endDate = payday && payday.date ? new Date(payday.date) : null;
+        const horizon = Math.max(1, (payday && payday.days) || 15);
+        extra = typeof computeExtraCash === 'function' ? computeExtraCash(horizon, { endDate, includeDeposit: false }) : null;
+      } catch (e) {}
+
+      const aggression = state.debtAggression != null ? state.debtAggression : 70;
+      const advanceAmt = (state.paySchedule && state.paySchedule.advanceAmount) || 3000;
+
+      const goalRows = goals.map((g) => {
+        const cur = Number(g.current) || 0;
+        const tgt = Number(g.target) || 0;
+        const pct = tgt > 0 ? Math.min(100, Math.round((cur / tgt) * 1000) / 10) : 0;
+        const mo = Number(g.monthlyContribute) || 0;
+        const gt = g.goalType || 'want';
+        const badge = gt === 'critical' ? 'rose' : (gt === 'emergency' ? 'amber' : 'sky');
+        const label = gt === 'critical' ? 'Critical' : (gt === 'emergency' ? 'Emergency' : 'Want');
+        const done = tgt > 0 && cur >= tgt - 0.01;
+        return `
+          <div class="alloc-row">
+            <div class="label"><span class="badge ${badge}">${label}</span> ${escapeHtml(g.name)}${done ? ' ✓' : ''}</div>
+            <div class="amt">${money(cur)}${tgt > 0 ? ' / ' + money(tgt) : ''}</div>
+          </div>
+          ${tgt > 0 ? `<div class="progress-wrap"><div class="progress-header"><span>${money(mo)}/mo</span><span class="pct">${pct}%</span></div><div class="progress-bar"><div class="progress-fill ${pct >= 100 ? '' : (pct >= 50 ? 'sky' : 'amber')}" style="width:${pct}%"></div></div></div>` : `<div style="font-size:0.75rem;color:var(--muted);margin:-4px 0 8px;">${money(mo)}/mo</div>`}
+        `;
+      }).join('');
+
+      let snowball1 = null;
+      try {
+        ensureSnowballOrder();
+        snowball1 = debtsInSnowballOrder().find(d => (Number(d.balance) || 0) > 0.01);
+      } catch (e) {}
+
+      const acctRows = (state.accounts || []).map(a => `
+        <div class="alloc-row">
+          <div class="label">${escapeHtml(a.name)}</div>
+          <div class="amt">${money(a.balance)}</div>
+        </div>
+      `).join('');
+
+      el.innerHTML = `
+        <div class="card">
+          <h2><span class="dot" style="background:var(--accent)"></span> At a glance</h2>
+          <div class="summary-grid">
+            <div class="summary-card">
+              <div class="label">Days to payday</div>
+              <div class="value">${payday ? payday.days : '—'}</div>
+            </div>
+            <div class="summary-card">
+              <div class="label">Next check</div>
+              <div class="value" style="font-size:0.95rem;">${payday ? escapeHtml(payday.which.replace(/ \(.*\)/, '')) : '—'}</div>
+            </div>
+            <div class="summary-card">
+              <div class="label">Total debt</div>
+              <div class="value" style="color:var(--rose)">${money(totalDebt)}</div>
+            </div>
+            <div class="summary-card">
+              <div class="label">OT needed / mo</div>
+              <div class="value" style="color:${ot && !ot.covered ? 'var(--rose)' : 'var(--green)'}">${ot ? (ot.covered ? '0 hrs' : ot.otHoursNeeded + ' hrs') : '—'}</div>
+            </div>
+            <div class="summary-card">
+              <div class="label">Bills overage</div>
+              <div class="value" style="color:${extra && extra.extra >= 0 ? 'var(--green)' : 'var(--rose)'}">${extra ? money(extra.extra) : '—'}</div>
+            </div>
+            <div class="summary-card">
+              <div class="label">Leftover → debt</div>
+              <div class="value" style="color:var(--rose)">${aggression}%</div>
+            </div>
+          </div>
+          ${payday ? `<p class="tip" style="margin-top:10px;">Next deposit: <strong>${escapeHtml(payday.label)}</strong> · ${escapeHtml(payday.which)}</p>` : ''}
+        </div>
+
+        <div class="card">
+          <h2><span class="dot" style="background:var(--amber)"></span> Monthly costs</h2>
+          <div class="alloc-row"><div class="label">Housing</div><div class="amt">${money(monthlyHousing)}</div></div>
+          <div class="alloc-row"><div class="label">Bills</div><div class="amt">${money(monthlyBills)}</div></div>
+          <div class="alloc-row"><div class="label">Debt minimums</div><div class="amt">${money(monthlyDebtMin)}</div></div>
+          <div class="alloc-row"><div class="label">Allowance (2 checks)</div><div class="amt">${money(allowPerCheck * 2)}</div></div>
+          <div class="total-line"><span>Total minimums</span><span>${money(monthlyMinWithAllow)}</span></div>
+          ${ot ? `<p class="tip" style="margin-top:8px;">Cash without extra OT ≈ ${money(ot.monthlyCashBase)} · ${ot.covered ? 'covers minimums' : 'short ' + money(ot.gap)}</p>` : ''}
+        </div>
+
+        <div class="card">
+          <h2><span class="dot" style="background:var(--rose)"></span> Debt snowball</h2>
+          ${snowball1 ? `<div class="alloc-row"><div class="label"><span class="badge rose">#1 attack</span> ${escapeHtml(snowball1.name)}</div><div class="amt" style="color:var(--rose)">${money(snowball1.balance)}</div></div>` : '<p class="empty">No open consumer debt</p>'}
+          <div class="alloc-row"><div class="label">Credit cards</div><div class="amt" style="color:var(--rose)">${money(creditDebt)}</div></div>
+          <div class="alloc-row"><div class="label">Vehicles</div><div class="amt" style="color:var(--amber)">${money(vehicleDebt)}</div></div>
+          <div class="alloc-row"><div class="label">Other</div><div class="amt">${money(otherDebt)}</div></div>
+          <div class="total-line"><span>Total</span><span style="color:var(--rose)">${money(totalDebt)}</span></div>
+          <div class="alloc-row" style="margin-top:8px;"><div class="label">Minimums / month</div><div class="amt">${money(monthlyDebtMin)}</div></div>
+        </div>
+
+        <div class="card">
+          <h2><span class="dot" style="background:var(--green)"></span> Goals</h2>
+          ${goalRows || '<p class="empty">No goals yet</p>'}
+          ${primary && primaryTgt > 0 ? `
+            <div class="progress-wrap" style="margin-top:8px;">
+              <div class="progress-header"><span>Primary: ${escapeHtml(primary.name)}</span><span class="pct">${primaryPct}%</span></div>
+              <div class="progress-bar"><div class="progress-fill" style="width:${primaryPct}%"></div></div>
+            </div>` : ''}
+        </div>
+
+        <div class="card">
+          <h2><span class="dot" style="background:var(--accent)"></span> Accounts</h2>
+          ${acctRows || '<p class="empty">No accounts</p>'}
+          <div class="total-line"><span>Bills + Mortgage staged</span><span>${money(round2(billsBal + mortBal))}</span></div>
+        </div>
+
+        <div class="card">
+          <h2><span class="dot" style="background:var(--purple)"></span> Spending left</h2>
+          <div class="alloc-row"><div class="label">Trent's Pocket</div><div class="amt">${money(trent ? trent.balance : 0)}</div></div>
+          <div class="alloc-row"><div class="label">Bri's Pocket</div><div class="amt">${money(bri ? bri.balance : 0)}</div></div>
+          <div class="alloc-row"><div class="label">Buffer</div><div class="amt">${money(buffer ? buffer.balance : 0)}</div></div>
+          <div class="alloc-row"><div class="label">Projects</div><div class="amt">${money(projects ? projects.balance : 0)}</div></div>
+          <div class="alloc-row"><div class="label">Savings / EF</div><div class="amt">${money(savings ? savings.balance : 0)}</div></div>
+        </div>
+
+        <div class="card">
+          <h2><span class="dot" style="background:var(--muted)"></span> Pay rhythm</h2>
+          <div class="alloc-row"><div class="label">Advance (25th)</div><div class="amt">${money(advanceAmt)}</div></div>
+          <div class="alloc-row"><div class="label">Allowance / check</div><div class="amt">${money(allowPerCheck)}</div></div>
+          <div class="alloc-row"><div class="label">Plan</div><div class="amt" style="font-size:0.85rem;">Bills → Critical/EF → ${aggression}% snowball</div></div>
+        </div>
+      `;
     }
 
     // ========== SIMULATOR (sandbox — never writes state.accounts) ==========
@@ -1057,10 +1010,23 @@
           value="${Number(a.balance) || 0}" />
       `).join('');
 
-      const fixed = sum(state.housing || [], 'amount') + sum(state.bills || [], 'amount') + sum(state.debts || [], 'minPayment');
+      const mode = document.getElementById('sim-mode')?.value || 'paycheck-25';
       const fixedEl = document.getElementById('sim-fixed');
-      if (fixedEl && !fixedEl.dataset.touched) fixedEl.value = fixed.toFixed(2);
+      if (fixedEl && !fixedEl.dataset.touched) {
+        if (mode === 'months') {
+          const fixed = sum(state.housing || [], 'amount') + sum(state.bills || [], 'amount') + sum(state.debts || [], 'minPayment');
+          fixedEl.value = fixed.toFixed(2);
+        } else {
+          const pay = typeof nextPaydayInfo === 'function' ? nextPaydayInfo(new Date(), { skipNearest: true }) : null;
+          const days = Math.max(1, (pay && pay.days) || 15);
+          const oblig = typeof upcomingObligations === 'function' ? upcomingObligations(days) : { total: 0 };
+          fixedEl.value = (Number(oblig.total) || 0).toFixed(2);
+        }
+      }
       if (fixedEl) fixedEl.onchange = () => { fixedEl.dataset.touched = '1'; };
+      // Keep mode UI in sync
+      const monthsWrap = document.getElementById('sim-months-wrap');
+      if (monthsWrap) monthsWrap.style.display = mode === 'months' ? '' : 'none';
 
       const allow = sum(state.everyday || [], 'amount');
       const allowEl = document.getElementById('sim-allowance');
@@ -1088,16 +1054,63 @@
       if (res) res.classList.add('hidden');
     }
 
-    let lastSim = null; // sandbox plan + slider buckets
+    function onSimModeChange() {
+      const mode = document.getElementById('sim-mode')?.value || 'paycheck-25';
+      const monthsWrap = document.getElementById('sim-months-wrap');
+      const tip = document.getElementById('sim-mode-tip');
+      const costsTip = document.getElementById('sim-costs-tip');
+      const fixedLabel = document.getElementById('sim-fixed-label');
+      const allowLabel = document.getElementById('sim-allow-label');
+      if (monthsWrap) monthsWrap.style.display = mode === 'months' ? '' : 'none';
+      if (tip) {
+        if (mode === 'paycheck-25') {
+          tip.textContent = 'Only the 25th advance until the next 10th — unpaid bills due in that window + one allowance, not a full month.';
+        } else if (mode === 'paycheck-10') {
+          tip.textContent = 'Only the 10th main check until the next 25th — unpaid bills due in that window + one allowance.';
+        } else {
+          tip.textContent = 'Full months: both checks each month, full monthly housing/bills/mins + two allowances.';
+        }
+      }
+      if (costsTip) {
+        costsTip.textContent = mode === 'months'
+          ? 'Full monthly housing + bills + debt mins. Allowance is per check (×2 applied automatically).'
+          : 'Auto-filled from unpaid items due before the next deposit. Edit if you want a different assumption.';
+      }
+      if (fixedLabel) {
+        fixedLabel.textContent = mode === 'months'
+          ? 'Housing + bills + debt mins (monthly) $'
+          : 'Bills / housing / debt mins due this window $';
+      }
+      if (allowLabel) {
+        allowLabel.textContent = mode === 'months' ? 'Allowance per check (×2 per month) $' : 'Allowance this check $';
+      }
+      // Refresh default fixed amount for mode
+      const fixedEl = document.getElementById('sim-fixed');
+      if (fixedEl) delete fixedEl.dataset.touched;
+      prepareSimForm();
+    }
+
+    let lastSim = null; // sandbox plan
 
     function runSimulation() {
+      const mode = document.getElementById('sim-mode')?.value || 'paycheck-25';
       const mainNet = Number(document.getElementById('sim-main-net')?.value) || 0;
       const advance = Number(document.getElementById('sim-advance')?.value) || 0;
-      const months = Math.min(60, Math.max(1, parseInt(document.getElementById('sim-months')?.value, 10) || 6));
-      const fixedMo = Number(document.getElementById('sim-fixed')?.value) || 0;
+      const months = mode === 'months'
+        ? Math.min(60, Math.max(1, parseInt(document.getElementById('sim-months')?.value, 10) || 6))
+        : 1;
+      let fixedMo = Number(document.getElementById('sim-fixed')?.value) || 0;
       const allowPerCheck = Number(document.getElementById('sim-allowance')?.value) || 0;
 
-      if (mainNet <= 0 && advance <= 0) {
+      if (mode === 'paycheck-25' && advance <= 0) {
+        alert('Enter the advance amount (25th).');
+        return;
+      }
+      if (mode === 'paycheck-10' && mainNet <= 0) {
+        alert('Enter a typical main check net (10th).');
+        return;
+      }
+      if (mode === 'months' && mainNet <= 0 && advance <= 0) {
         alert('Enter a typical main check net (and/or advance).');
         return;
       }
@@ -1110,28 +1123,65 @@
         if (startBal[id] == null) startBal[id] = 0;
       });
 
-      syncCushionGoalFromAccount();
-      const goalsMeta = (state.goals || []).map(g => {
-        const acct = goalLinkedAccount(g);
-        const current = acct ? (Number(acct.balance) || 0) : (Number(g.current) || 0);
-        return {
-          id: g.id,
-          name: g.name,
-          target: Number(g.target) || 0,
-          current,
-          accountId: (acct && acct.id) || g.accountId || null,
-          isPrimary: !!g.isPrimary
-        };
-      });
+      const goalsMeta = (state.goals || []).map(g => ({
+        id: g.id,
+        name: g.name,
+        target: Number(g.target) || 0,
+        current: Number(g.current) || 0,
+        accountId: g.accountId || (goalLinkedAccount(g) && goalLinkedAccount(g).id) || null,
+        isPrimary: !!g.isPrimary
+      }));
 
-      const monthlyIncome = round2(advance + mainNet);
-      const allowMo = allowPerCheck * 2;
-      const living = round2(fixedMo + allowMo);
-      const residual = round2(Math.max(0, monthlyIncome - living));
+      let income = 0;
+      let allowMo = 0;
+      let living = 0;
+      let periodLabel = '';
+      let daysHorizon = 40;
+
+      if (mode === 'paycheck-25') {
+        income = advance;
+        allowMo = allowPerCheck; // one check
+        // Horizon: days until next 10th deposit (skip nearest if that is the 25th we're simulating)
+        const pay = nextPaydayInfo(new Date(), { skipNearest: true });
+        daysHorizon = Math.max(1, pay.days || 15);
+        // Prefer unpaid obligations in that window for living (if fixed wasn't manually set)
+        const fixedEl = document.getElementById('sim-fixed');
+        if (fixedEl && !fixedEl.dataset.touched) {
+          const oblig = upcomingObligations(daysHorizon);
+          fixedMo = round2(oblig.total || 0);
+          fixedEl.value = fixedMo.toFixed(2);
+        }
+        living = round2(fixedMo + allowMo);
+        periodLabel = '25th advance → next 10th (' + daysHorizon + ' days)';
+      } else if (mode === 'paycheck-10') {
+        income = mainNet;
+        allowMo = allowPerCheck;
+        const pay = nextPaydayInfo(new Date(), { skipNearest: true });
+        daysHorizon = Math.max(1, pay.days || 15);
+        const fixedEl = document.getElementById('sim-fixed');
+        if (fixedEl && !fixedEl.dataset.touched) {
+          const oblig = upcomingObligations(daysHorizon);
+          fixedMo = round2(oblig.total || 0);
+          fixedEl.value = fixedMo.toFixed(2);
+        }
+        living = round2(fixedMo + allowMo);
+        periodLabel = '10th main → next 25th (' + daysHorizon + ' days)';
+      } else {
+        income = round2(advance + mainNet);
+        allowMo = allowPerCheck * 2;
+        living = round2(fixedMo + allowMo);
+        periodLabel = months + ' full month' + (months > 1 ? 's' : '');
+        daysHorizon = months * 30;
+      }
+
+      const residual = round2(Math.max(0, income - living));
 
       lastSim = {
+        mode,
+        periodLabel,
+        daysHorizon,
         mainNet, advance, months, fixedMo, allowPerCheck, allowMo, living, residual,
-        monthlyIncome,
+        monthlyIncome: income, // period income (name kept for projection)
         startBal: { ...startBal },
         debtMins: sum(state.debts || [], 'minPayment'),
         debtsMeta: (state.debts || []).map(d => ({
@@ -1214,7 +1264,9 @@
       if (!lastSim) return null;
       const fixedMo = lastSim.fixedMo || 0;
       const allowMo = lastSim.allowMo || 0;
-      const { months, advance, mainNet, startBal, goalsMeta, debtsMeta } = lastSim;
+      const { months, startBal, goalsMeta, debtsMeta } = lastSim;
+      const periodIncome = Number(lastSim.monthlyIncome) || 0;
+      const isPaycheckMode = lastSim.mode === 'paycheck-25' || lastSim.mode === 'paycheck-10';
 
       // goal balances sandbox
       const goalBal = {};
@@ -1240,18 +1292,19 @@
       (goalsMeta || []).forEach(g => { goalReceived[g.id] = 0; });
 
       for (let m = 1; m <= months; m++) {
-        // Accrue interest first (monthly APR/12)
+        // Accrue interest (full month rate only in multi-month mode; ~half-month for single paycheck)
+        const interestFactor = isPaycheckMode ? 0.5 : 1;
         debtBal.forEach(d => {
           if (d.balance <= 0.01) { d.balance = 0; return; }
           if (d.hasInterest && d.rate > 0) {
-            const interest = round2(d.balance * (d.rate / 100 / 12));
+            const interest = round2(d.balance * (d.rate / 100 / 12) * interestFactor);
             d.balance = round2(d.balance + interest);
             totalInterest = round2(totalInterest + interest);
           }
         });
 
-        bal['acct-bills'] = round2((bal['acct-bills'] || 0) + advance + mainNet);
-        totalIncome = round2(totalIncome + advance + mainNet);
+        bal['acct-bills'] = round2((bal['acct-bills'] || 0) + periodIncome);
+        totalIncome = round2(totalIncome + periodIncome);
 
         // Fixed costs (housing + bills portion of fixedMo excluding we still take full fixedMo from bills)
         const fixedPay = Math.min(fixedMo, bal['acct-bills'] || 0);
@@ -1324,7 +1377,7 @@
 
         rows.push({
           month: m,
-          income: advance + mainNet,
+          income: periodIncome,
           bills: bal['acct-bills'],
           debt: totalDebtNow,
           savedThisMo,
@@ -1571,29 +1624,34 @@
         `<div class="alloc-row"><div class="label"><span class="badge ${i === 0 ? 'green' : 'purple'}">#${i + 1}</span> ${escapeHtml(g.name)}${g.target > 0 ? ' → ' + money(g.target) : ''}</div><div class="amt" style="color:var(--muted)">until target</div></div>`
       ).join('');
 
+      const isPaycheck = lastSim.mode === 'paycheck-25' || lastSim.mode === 'paycheck-10';
+      const title = isPaycheck
+        ? ('Paycheck window · ' + (lastSim.periodLabel || ''))
+        : ('Simulation · ' + lastSim.months + ' month' + (lastSim.months > 1 ? 's' : ''));
       el.innerHTML = `
         <div class="result-box good">
-          <h3>Simulation · ${lastSim.months} month${lastSim.months > 1 ? 's' : ''}</h3>
+          <h3>${escapeHtml(title)}</h3>
           <p style="font-size:0.78rem;color:var(--muted);margin-bottom:8px;">
-            Sandbox only. Each month uses this waterfall — amounts never exceed income.
+            Sandbox only. ${isPaycheck
+              ? 'This is <strong>one paycheck</strong> through the next deposit — not a full month of costs.'
+              : 'Each month uses this waterfall — amounts never exceed income.'}
           </p>
-          <p class="section-label">Monthly waterfall (${money(income)} income)</p>
-          <div class="alloc-row"><div class="label"><span class="badge amber">1</span> Living (housing + bills + debt mins + allowance)</div><div class="amt">${money(living)}</div></div>
+          <p class="section-label">${isPaycheck ? 'This paycheck' : 'Monthly'} waterfall (${money(income)} income)</p>
+          <div class="alloc-row"><div class="label"><span class="badge amber">1</span> ${isPaycheck ? 'Due this window + allowance' : 'Living (housing + bills + debt mins + allowance)'}</div><div class="amt">${money(living)}</div></div>
           <div class="progress-wrap"><div class="progress-bar"><div class="progress-fill amber" style="width:${income > 0 ? Math.min(100, living / income * 100) : 0}%"></div></div></div>
           <div class="alloc-row"><div class="label"><span class="badge green">2</span> Leftover → goals by priority</div><div class="amt" style="color:var(--green)">${money(residual)}</div></div>
           ${goalLines || '<p class="empty">No goals — residual goes to debt</p>'}
           <div class="alloc-row"><div class="label"><span class="badge rose">3</span> After goals → extra to debt</div><div class="amt" style="color:var(--rose)">remainder</div></div>
           <div class="total-line"><span>Income check</span><span>${money(income)} = ${money(living)} living + ${money(residual)} free</span></div>
-          ${living > income ? '<p class="tip bad">Living costs exceed monthly income — sim will show shortfalls.</p>' : ''}
+          ${living > income ? '<p class="tip" style="color:var(--rose)">Costs exceed this paycheck — sim will show a shortfall.</p>' : ''}
 
           <div class="summary-grid" id="sim-summary-grid" style="margin-top:14px;">
             ${buildSimSummaryHtml(proj)}
           </div>
-          <p class="section-label">Goal timelines</p>
+          <p class="section-label">Goals after this ${isPaycheck ? 'paycheck' : 'period'}</p>
           <div id="sim-goals-eta">${buildSimGoalsEtaHtml(proj)}</div>
-          <p class="section-label">Debt payoff (with interest if on)</p>
-          <div id="sim-debt-eta">${buildSimDebtEtaHtml(proj)}</div>
-          <p class="section-label">Month by month</p>
+          ${isPaycheck ? '' : '<p class="section-label">Debt payoff (with interest if on)</p><div id="sim-debt-eta">' + buildSimDebtEtaHtml(proj) + '</div>'}
+          <p class="section-label">${isPaycheck ? 'This window' : 'Month by month'}</p>
           <div id="sim-month-table">${buildSimMonthTableHtml(proj)}</div>
           <p class="section-label">Ending sandbox balances</p>
           <div id="sim-ending-bals">${buildSimEndingHtml(proj)}</div>
@@ -1614,55 +1672,25 @@
             <div class="result-box">
               <h3>Advance (25th)</h3>
               <div class="total-line"><span>Flat advance deposit</span><span>${money(adv)}</span></div>
-              <p class="tip" style="margin-top:10px;">This is paid back on the main (10th) check as “Advance Payback.” Use Allocate → Advance.</p>
             </div>`;
           el.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
         return;
       }
 
-      const rate = Number(document.getElementById('pay-rate')?.value) || 42.56;
-      const regular = Number(document.getElementById('pay-regular')?.value) || 0;
+      const p = readPayInputs();
       const otH = Number(document.getElementById('pay-ot-hours')?.value) || 0;
-      const holidays = Number(document.getElementById('pay-holidays')?.value) || 0;
-      const flsa = Number(document.getElementById('pay-flsa')?.value) || 0;
-      const uniform = Number(document.getElementById('pay-uniform')?.value) || 0;
-      const otherEarn = Number(document.getElementById('pay-other-earn')?.value) || 0;
-      const otMult = 1.5;
-
-      const holidayHrs = holidays * 12;
-      const otPay = round2(otH * rate * otMult);
-      const holidayPay = round2(holidayHrs * rate * otMult);
-      const gross = round2(regular + otPay + holidayPay + flsa + uniform + otherEarn);
-
-      const pretax = round2(
-        (Number(document.getElementById('pay-med')?.value) || 0) +
-        (Number(document.getElementById('pay-vision')?.value) || 0) +
-        (Number(document.getElementById('pay-dental')?.value) || 0) +
-        (Number(document.getElementById('pay-retirement')?.value) || 0) +
-        (Number(document.getElementById('pay-pretax-other')?.value) || 0)
-      );
-
-      const advancePayback = document.getElementById('pay-advance-payback')?.checked ? 3000 : 0;
-      const posttax = round2(
-        advancePayback +
-        (Number(document.getElementById('pay-union')?.value) || 0) +
-        (Number(document.getElementById('pay-roth')?.value) || 0) +
-        (Number(document.getElementById('pay-other-post')?.value) || 0)
-      );
-
-      const fedExempt = !!document.getElementById('pay-fed-exempt')?.checked;
-      const caExempt = !!document.getElementById('pay-ca-exempt')?.checked;
-      const fedPct = Number(document.getElementById('pay-fed-pct')?.value) || 0;
-      const statePct = Number(document.getElementById('pay-state-pct')?.value) || 0;
-      const medPct = Number(document.getElementById('pay-medicare-pct')?.value) || 0;
-
-      const taxable = Math.max(0, gross - pretax);
+      const est = estimateMainNetAtOtHours(otH, p);
+      const net = est.net;
+      const fedExempt = !!p.fedExempt;
+      const caExempt = !!p.caExempt;
+      const fedPct = p.fedPct;
+      const statePct = p.statePct;
+      const medPct = p.medPct;
+      const taxable = Math.max(0, est.gross - est.pretax);
       const fed = fedExempt ? 0 : round2(taxable * (fedPct / 100));
       const state = caExempt ? 0 : round2(taxable * (statePct / 100));
       const medicare = round2(taxable * (medPct / 100));
-      const taxes = round2(fed + state + medicare);
-      const net = round2(gross - pretax - taxes - posttax);
 
       window._lastPayNet = net;
       const el = document.getElementById('pay-result');
@@ -1671,27 +1699,172 @@
       el.innerHTML = `
         <div class="result-box">
           <h3>Estimated main check (10th)</h3>
-          <div class="alloc-row"><div class="label">Regular / scheduled</div><div class="amt">${money(regular)}</div></div>
-          <div class="alloc-row"><div class="label">OT (${otH} hrs @ 1.5×)</div><div class="amt">${money(otPay)}</div></div>
-          <div class="alloc-row"><div class="label">Holiday (${holidayHrs} hrs = ${holidays} × 12 @ 1.5×)</div><div class="amt">${money(holidayPay)}</div></div>
-          <div class="alloc-row"><div class="label">FLSA</div><div class="amt">${money(flsa)}</div></div>
-          <div class="alloc-row"><div class="label">Uniform allowance</div><div class="amt">${money(uniform)}</div></div>
-          ${otherEarn ? `<div class="alloc-row"><div class="label">Other earnings</div><div class="amt">${money(otherEarn)}</div></div>` : ''}
-          <div class="alloc-row"><div class="label"><strong>Gross</strong></div><div class="amt"><strong>${money(gross)}</strong></div></div>
-          <div class="alloc-row"><div class="label">Before-tax deductions</div><div class="amt">−${money(pretax)}</div></div>
-          <div class="alloc-row"><div class="label">Fed taxable (approx)</div><div class="amt">${money(taxable)}</div></div>
+          <div class="alloc-row"><div class="label">OT (${otH} hrs @ 1.5×)</div><div class="amt">${money(est.otPay)}</div></div>
+          <div class="alloc-row"><div class="label"><strong>Gross</strong></div><div class="amt"><strong>${money(est.gross)}</strong></div></div>
+          <div class="alloc-row"><div class="label">Before-tax deductions</div><div class="amt">−${money(est.pretax)}</div></div>
           <div class="alloc-row"><div class="label">Federal ${fedExempt ? '(exempt)' : fedPct + '%'}</div><div class="amt">−${money(fed)}</div></div>
           <div class="alloc-row"><div class="label">CA state ${caExempt ? '(exempt)' : statePct + '%'}</div><div class="amt">−${money(state)}</div></div>
           <div class="alloc-row"><div class="label">Medicare EE ${medPct}%</div><div class="amt">−${money(medicare)}</div></div>
-          <div class="alloc-row"><div class="label">After-tax ${advancePayback ? '(incl. $3,000 advance payback)' : ''}</div><div class="amt">−${money(posttax)}</div></div>
+          <div class="alloc-row"><div class="label">After-tax (incl. advance payback)</div><div class="amt">−${money(est.posttax)}</div></div>
           <div class="total-line"><span>Estimated net to bank</span><span>${money(net)}</span></div>
-          <p class="tip" style="margin-top:10px;">
-            Your Aug stub net was <strong>$8,515.63</strong> with ~102 OT hrs + $3k advance payback.
-            Tweak OT hours &amp; holidays for the next period. Uncheck advance payback if this isn’t a 10th check with payback.
-          </p>
         </div>
       `;
       el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    /** Sept 2026 CCC Fire defaults — locked rates; Pay tab only changes OT + tax exempt */
+    const PAY_DEFAULTS = {
+      rate: 42.56,
+      regular: 10328.74,
+      holidays: 0,
+      flsa: 425.54,
+      uniform: 54.50,
+      otherEarn: 0,
+      med: 640.17,
+      vision: 17.10,
+      dental: 11.49,
+      retirement: 1691.85,
+      pretaxOther: 0,
+      advancePayback: 3000,
+      union: 177.20,
+      roth: 50,
+      otherPost: 47.08,
+      fedExempt: false,
+      caExempt: false,
+      fedPct: 12,
+      statePct: 5.5,
+      medPct: 1.62
+    };
+
+    function readPayInputs() {
+      const c = (id, def) => {
+        const el = document.getElementById(id);
+        if (!el) return def;
+        return !!el.checked;
+      };
+      const d = PAY_DEFAULTS;
+      return {
+        rate: d.rate,
+        regular: d.regular,
+        holidays: d.holidays,
+        flsa: d.flsa,
+        uniform: d.uniform,
+        otherEarn: d.otherEarn,
+        med: d.med,
+        vision: d.vision,
+        dental: d.dental,
+        retirement: d.retirement,
+        pretaxOther: d.pretaxOther,
+        advancePayback: d.advancePayback,
+        union: d.union,
+        roth: d.roth,
+        otherPost: d.otherPost,
+        fedExempt: c('pay-fed-exempt', d.fedExempt),
+        caExempt: c('pay-ca-exempt', d.caExempt),
+        fedPct: d.fedPct,
+        statePct: d.statePct,
+        medPct: d.medPct
+      };
+    }
+
+    /** Estimate main-check net for a given OT-hour count. */
+    function estimateMainNetAtOtHours(otHours, inputs) {
+      const p = inputs || readPayInputs();
+      const otMult = 1.5;
+      const holidayHrs = (Number(p.holidays) || 0) * 12;
+      const rate = Number(p.rate) || 42.56;
+      const otPay = round2(otHours * rate * otMult);
+      const holidayPay = round2(holidayHrs * rate * otMult);
+      const gross = round2(
+        (Number(p.regular) || 0) + otPay + holidayPay +
+        (Number(p.flsa) || 0) + (Number(p.uniform) || 0) + (Number(p.otherEarn) || 0)
+      );
+      const pretax = round2(
+        (Number(p.med) || 0) + (Number(p.vision) || 0) + (Number(p.dental) || 0) +
+        (Number(p.retirement) || 0) + (Number(p.pretaxOther) || 0)
+      );
+      const posttax = round2(
+        (Number(p.advancePayback) || 0) + (Number(p.union) || 0) +
+        (Number(p.roth) || 0) + (Number(p.otherPost) || 0)
+      );
+      const medPct = Number(p.medPct) || 0;
+      const fedPct = Number(p.fedPct) || 0;
+      const statePct = Number(p.statePct) || 0;
+      const taxable = Math.max(0, gross - pretax);
+      const fed = p.fedExempt ? 0 : round2(taxable * (fedPct / 100));
+      const state = p.caExempt ? 0 : round2(taxable * (statePct / 100));
+      const medicare = round2(taxable * (medPct / 100));
+      const taxes = round2(fed + state + medicare);
+      const net = round2(gross - pretax - taxes - posttax);
+      return { net, gross, otPay, holidayPay, pretax, taxes, posttax, rate, otMult, medPct, fedExempt: !!p.fedExempt, caExempt: !!p.caExempt, fedPct, statePct };
+    }
+
+    /** Auto number: OT hours/month needed so base + advance cover budget minimums. */
+    function computeOtNeededSummary() {
+      const p = readPayInputs();
+      // For the home-page number, ignore holidays so “OT needed” = voluntary OT only
+      const pBase = { ...p, holidays: 0 };
+      const monthlyHousing = sum(state.housing || [], 'amount');
+      const monthlyBills = sum(state.bills || [], 'amount');
+      const monthlyDebtMin = sum(state.debts || [], 'minPayment');
+      const allowPerCheck = sum(state.everyday || [], 'amount');
+      const allowMo = allowPerCheck * 2;
+      const monthlyMinimums = round2(monthlyHousing + monthlyBills + monthlyDebtMin + allowMo);
+      const advance = (state.paySchedule && state.paySchedule.advanceAmount) || 3000;
+      const base = estimateMainNetAtOtHours(0, pBase);
+      const monthlyCashBase = round2(base.net + advance);
+      const gap = round2(Math.max(0, monthlyMinimums - monthlyCashBase));
+      const taxRateOnOt = (base.medPct / 100) + (base.fedExempt ? 0 : base.fedPct / 100) + (base.caExempt ? 0 : base.statePct / 100);
+      const netPerOtHour = round2(base.rate * base.otMult * (1 - taxRateOnOt));
+      let otHoursNeeded = 0;
+      if (gap > 0.01 && netPerOtHour > 0) {
+        otHoursNeeded = Math.ceil((gap / netPerOtHour) * 4) / 4;
+      }
+      const withOt = estimateMainNetAtOtHours(otHoursNeeded, pBase);
+      const monthlyCashWithOt = round2(withOt.net + advance);
+      const surplus = round2(monthlyCashWithOt - monthlyMinimums);
+      return {
+        monthlyHousing, monthlyBills, monthlyDebtMin, allowMo, monthlyMinimums,
+        advance, baseNet: base.net, monthlyCashBase, gap, netPerOtHour,
+        otHoursNeeded, monthlyCashWithOt, surplus, covered: gap <= 0.01,
+        rate: base.rate, medPct: base.medPct, fedExempt: base.fedExempt, caExempt: base.caExempt,
+        fedPct: base.fedPct, statePct: base.statePct
+      };
+    }
+
+    function calcOtNeededForMinimums() {
+      const s = computeOtNeededSummary();
+      const el = document.getElementById('ot-needed-result');
+      if (!el) return;
+      el.classList.remove('hidden');
+      el.innerHTML = `
+        <div class="result-box ${s.covered ? 'good' : 'warn'}">
+          <h3>OT to cover monthly minimums</h3>
+          <p class="section-label">What must be covered each month</p>
+          <div class="alloc-row"><div class="label">Housing</div><div class="amt">${money(s.monthlyHousing)}</div></div>
+          <div class="alloc-row"><div class="label">Recurring bills</div><div class="amt">${money(s.monthlyBills)}</div></div>
+          <div class="alloc-row"><div class="label">Debt minimums</div><div class="amt">${money(s.monthlyDebtMin)}</div></div>
+          <div class="alloc-row"><div class="label">Allowance (2 checks)</div><div class="amt">${money(s.allowMo)}</div></div>
+          <div class="total-line"><span>Total minimums</span><span>${money(s.monthlyMinimums)}</span></div>
+
+          <p class="section-label">Cash without voluntary OT</p>
+          <div class="alloc-row"><div class="label">Main check net @ 0 OT hrs</div><div class="amt">${money(s.baseNet)}</div></div>
+          <div class="alloc-row"><div class="label">+ Advance (25th)</div><div class="amt">${money(s.advance)}</div></div>
+          <div class="total-line"><span>Monthly cash (no extra OT)</span><span>${money(s.monthlyCashBase)}</span></div>
+
+          ${s.covered
+            ? `<p style="margin-top:10px;color:var(--green);font-weight:600;">✓ Base pay + advance already cover minimums. No extra OT required for bills.</p>
+               `
+            : `<p class="section-label">Gap &amp; OT needed</p>
+               <div class="alloc-row"><div class="label">Shortfall</div><div class="amt" style="color:var(--rose)">${money(s.gap)}</div></div>
+               <div class="alloc-row"><div class="label">Net per OT hour @ 1.5×</div><div class="amt">≈ ${money(s.netPerOtHour)}</div></div>
+               <div class="total-line"><span>OT hours needed / month</span><span style="color:var(--rose)">${s.otHoursNeeded} hrs</span></div>
+               `}
+
+          
+        </div>
+      `;
+      el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
     function usePayInAllocate() {
@@ -1903,28 +2076,11 @@
       alert('Updated ' + matched + ' items:\n\n' + report.join('\n'));
     }
 
-    // ========== PHASE ==========
+    // ========== SINGLE PLAN (goals + debt slider) ==========
     function setPhase(p) {
-      state.phase = p;
-      document.getElementById('phase-cushion').classList.toggle('active', p === 'cushion');
-      document.getElementById('phase-debt').classList.toggle('active', p === 'debt');
-      const tip = document.getElementById('phase-tip');
-      const agPanel = document.getElementById('aggression-panel');
-      if (p === 'cushion') {
-        tip.textContent = 'Cover dues first, then monthly goal contributions. Leftover stays as buffer.';
-        document.getElementById('header-sub').textContent = 'Build cushion → then attack debt';
-        if (agPanel) agPanel.classList.add('hidden');
-      } else {
-        tip.textContent = 'Minimums first. Use the slider to choose how aggressive extra debt payments are.';
-        document.getElementById('header-sub').textContent = 'Attacking debt — set aggression';
-        if (agPanel) agPanel.classList.remove('hidden');
-        const sl = document.getElementById('debt-aggression');
-        if (sl) {
-          sl.value = state.debtAggression != null ? state.debtAggression : 70;
-          onAggressionChange(sl.value);
-        }
-      }
-      save();
+      // Kept for older audits/logs — UI no longer switches modes
+      state.phase = p || 'unified';
+      try { localStorage.setItem('paycheckPlanner', JSON.stringify(state)); } catch (e) {}
     }
 
     function onAggressionChange(val) {
@@ -1935,10 +2091,10 @@
       const ro = document.getElementById('aggression-readout');
       if (ro) {
         ro.textContent = v === 0
-          ? 'All leftover after bills stays as buffer — no extra debt payment.'
+          ? 'After bills + goal amounts, all leftover stays in Bills as buffer — no extra debt.'
           : v === 100
-            ? 'All leftover after bills goes to debt (credit cards first).'
-            : v + '% of leftover after required bills goes to debt; ' + (100 - v) + '% stays as buffer.';
+            ? 'After bills + goal amounts, all leftover goes to extra debt (credit cards first).'
+            : 'After bills + goal amounts, ' + v + '% of leftover goes to extra debt; ' + (100 - v) + '% stays as buffer.';
       }
       try { localStorage.setItem('paycheckPlanner', JSON.stringify(state)); } catch (e) {}
     }
@@ -2386,15 +2542,83 @@
       save();
     }
 
+    function goalTypeRank(t) {
+      if (t === 'critical') return 0;
+      if (t === 'emergency') return 1;
+      return 2;
+    }
+
+    function sortGoalsByType() {
+      if (!state.goals) return;
+      state.goals.sort((a, b) => {
+        const r = goalTypeRank(a.goalType) - goalTypeRank(b.goalType);
+        if (r !== 0) return r;
+        return (a.priority || 0) - (b.priority || 0);
+      });
+      state.goals.forEach((g, i) => { g.priority = i + 1; });
+    }
+
+    function goalIsComplete(g) {
+      const tgt = Number(g.target) || 0;
+      if (tgt <= 0) return false;
+      return (Number(g.current) || 0) >= tgt - 0.01;
+    }
+
+    function criticalAndEmergencyDone() {
+      const open = (state.goals || []).filter(g =>
+        (g.goalType === 'critical' || g.goalType === 'emergency') && !goalIsComplete(g)
+      );
+      return open.length === 0;
+    }
+
+    function ensureSnowballOrder() {
+      if (!state.debts) state.debts = [];
+      const missing = state.debts.some(d => d.snowballOrder == null);
+      if (missing) autoSnowballOrder(true);
+      else {
+        // Normalize 1..n
+        debtsInSnowballOrder().forEach((d, i) => { d.snowballOrder = i + 1; });
+      }
+    }
+
+    function debtsInSnowballOrder() {
+      return [...(state.debts || [])].sort((a, b) =>
+        (Number(a.snowballOrder) || 999) - (Number(b.snowballOrder) || 999) ||
+        (Number(a.balance) || 0) - (Number(b.balance) || 0)
+      );
+    }
+
+    function autoSnowballOrder(silent) {
+      if (!state.debts) return;
+      const sorted = [...state.debts].sort((a, b) => (Number(a.balance) || 0) - (Number(b.balance) || 0));
+      sorted.forEach((d, i) => { d.snowballOrder = i + 1; });
+      if (!silent) save();
+    }
+
+    function moveDebt(id, dir) {
+      ensureSnowballOrder();
+      const ordered = debtsInSnowballOrder();
+      const i = ordered.findIndex(d => d.id === id);
+      if (i < 0) return;
+      const j = i + dir;
+      if (j < 0 || j >= ordered.length) return;
+      const ao = ordered[i].snowballOrder;
+      ordered[i].snowballOrder = ordered[j].snowballOrder;
+      ordered[j].snowballOrder = ao;
+      save();
+    }
+
     function moveGoal(id, dir) {
+      sortGoalsByType();
       const i = (state.goals || []).findIndex(g => g.id === id);
       if (i < 0) return;
       const j = i + dir;
       if (j < 0 || j >= state.goals.length) return;
+      // Only swap within same goalType
+      if ((state.goals[i].goalType || 'want') !== (state.goals[j].goalType || 'want')) return;
       const tmp = state.goals[i];
       state.goals[i] = state.goals[j];
       state.goals[j] = tmp;
-      // Refresh priority numbers
       state.goals.forEach((g, idx) => { g.priority = idx + 1; });
       save();
     }
@@ -2443,8 +2667,10 @@
       return accounts.reduce((s, a) => s + (Number(a.balance) || 0), 0);
     }
 
-    /** Bills-account overage only — pockets, Buffer, Projects, Savings excluded */
-    function computeExtraCash(horizonDays = 40) {
+    /** Bills-account overage only — pockets, Buffer, Projects, Savings excluded.
+     *  Optionally treat an incoming paycheck deposit as already in Bills so bills
+     *  that deposit is meant to cover don't look like a shortfall. */
+    function computeExtraCash(horizonDays = 40, opts = {}) {
       const byId = (id) => {
         const a = getAccountById(id);
         return a ? (Number(a.balance) || 0) : 0;
@@ -2460,36 +2686,71 @@
       const earmarked = round2(projects + savingsEf);
       const excluded = round2(earmarked + buffer + trent + bri + equip);
 
-      const oblig = upcomingObligations(horizonDays);
+      // Deposit to count as available in Bills (e.g. $3k advance not yet in balance, or just applied)
+      let includeDeposit = opts.includeDeposit;
+      if (includeDeposit == null) {
+        includeDeposit = !!document.getElementById('audit-include-deposit')?.checked;
+      }
+      let depositAmt = opts.depositAmt;
+      if (depositAmt == null) {
+        const el = document.getElementById('audit-deposit-amt');
+        if (el && el.value !== '') depositAmt = Number(el.value) || 0;
+        else depositAmt = (state.paySchedule && state.paySchedule.advanceAmount) || 3000;
+      }
+      depositAmt = round2(Math.max(0, Number(depositAmt) || 0));
+      if (!includeDeposit) depositAmt = 0;
+
+      // Effective Bills pool for covering obligations in this pay window
+      const billsAvailable = round2(bills + depositAmt);
+
+      // Strict window: only obligations due on or before endDate (next deposit), never past it
+      const endDate = opts.endDate || null;
+      const oblig = endDate
+        ? upcomingObligations({ endDate, strict: true })
+        : upcomingObligations({ horizonDays: horizonDays, strict: true });
       const dueSoon = round2(oblig.total || 0);
       // Housing usually leaves Mortgage account — don't double-count against Bills
       const dueFromMortgage = round2((oblig.details || [])
         .filter(d => d.category === 'housing')
         .reduce((s, d) => s + d.amount, 0));
       const dueFromBills = round2(Math.max(0, dueSoon - dueFromMortgage));
+      // Mortgage balance covers housing first; remainder of housing still hits Bills
       const stillDueFromBills = round2(dueFromBills + Math.max(0, dueFromMortgage - mortgage));
 
-      const extra = round2(bills - stillDueFromBills);
-      const shortfall = round2(Math.max(0, stillDueFromBills - bills));
-      const liquid = bills;
-      const operating = bills;
-      const billPay = bills;
+      // How much of the due list is covered by (Bills + deposit)
+      const coveredByDeposit = round2(Math.min(stillDueFromBills, billsAvailable));
+      const extra = round2(billsAvailable - stillDueFromBills);
+      const shortfall = round2(Math.max(0, stillDueFromBills - billsAvailable));
+      const liquid = billsAvailable;
+      const operating = billsAvailable;
+      const billPay = billsAvailable;
       const payday = typeof nextPaydayInfo === 'function' ? nextPaydayInfo() : null;
       return {
         liquid, operating, earmarked, excluded, dueSoon, dueFromBills, dueFromMortgage,
-        stillDueFromBills, billPay, shortfall, extra,
+        stillDueFromBills, coveredByDeposit, billPay, shortfall, extra,
         extraVsOperating: extra,
-        bills, mortgage, projects, savingsEf, buffer, trent, bri, equip,
+        bills, billsAvailable, depositAmt, includeDeposit,
+        mortgage, projects, savingsEf, buffer, trent, bri, equip,
         obligDetails: oblig.details || [],
         horizonDays,
+        endDate: endDate || (oblig.horizon || null),
         payday
       };
     }
 
     function checkExtraCash() {
+      // Prefill deposit from schedule if empty
+      const depEl = document.getElementById('audit-deposit-amt');
+      if (depEl && (!depEl.value || depEl.value === '0') && !depEl.dataset.touched) {
+        depEl.value = (state.paySchedule && state.paySchedule.advanceAmount) || 3000;
+      }
+      if (depEl) depEl.onchange = () => { depEl.dataset.touched = '1'; };
+
+      // Cutoff = exact next deposit date (not "40 days" — no next-month bills)
       const payday = nextPaydayInfo();
+      const endDate = payday && payday.date ? new Date(payday.date) : null;
       const horizon = Math.max(1, payday.days || 1);
-      const x = computeExtraCash(horizon);
+      const x = computeExtraCash(horizon, { endDate });
       const el = document.getElementById('extra-cash-result');
       if (!el) return;
       el.classList.remove('hidden');
@@ -2503,32 +2764,34 @@
               <div class="value" style="color:${x.extra >= 0 ? 'var(--green)' : 'var(--rose)'}">${money(x.extra)}</div>
             </div>
             <div class="summary-card">
-              <div class="label">Bills balance</div>
-              <div class="value">${money(x.bills)}</div>
+              <div class="label">Bills + deposit</div>
+              <div class="value">${money(x.billsAvailable)}</div>
             </div>
             <div class="summary-card">
-              <div class="label">Still needed from Bills</div>
+              <div class="label">Still needed (this window)</div>
               <div class="value" style="color:var(--amber)">${money(x.stillDueFromBills)}</div>
             </div>
             <div class="summary-card">
-              <div class="label">Mortgage account</div>
-              <div class="value">${money(x.mortgage)}</div>
+              <div class="label">Covered by Bills/deposit</div>
+              <div class="value" style="color:var(--green)">${money(x.coveredByDeposit)}</div>
             </div>
           </div>
           <p style="font-size:0.78rem;color:var(--muted);margin-top:10px;">
-            <strong>Overage</strong> = Bills balance − unpaid obligations that still need to leave Bills (housing covered by Mortgage is not counted against Bills).
-            Move overage yourself to Projects, Savings/EF, Buffer, or pockets.
-            ${x.shortfall > 0 ? '<br><strong style="color:var(--rose)">Shortfall: need ' + money(x.shortfall) + ' more in Bills for unpaid items.</strong>' : ''}
-            ${x.payday ? '<br>Window: ' + escapeHtml(x.payday.which) + ' · ' + escapeHtml(x.payday.label) + ' (' + x.payday.days + ' day(s))' + (x.payday.skippedNearest ? ' · skipped payday just received' : '') + '.' : ''}
+            <strong>Overage</strong> = Bills ${money(x.bills)}${x.depositAmt > 0 ? ' + deposit ' + money(x.depositAmt) : ''} − unpaid items due before next paycheck ${money(x.stillDueFromBills)}.
+            Bills the deposit is meant to cover are funded first; only the leftover is overage.
+            ${x.shortfall > 0 ? '<br><strong style="color:var(--rose)">Shortfall: need ' + money(x.shortfall) + ' more after this deposit.</strong>' : ''}
+            ${x.payday ? '<br><strong>Only bills due on or before</strong> ' + escapeHtml(x.payday.label) + ' (' + escapeHtml(x.payday.which) + ', ' + x.payday.days + ' day(s)). Nothing after that deposit date is counted.' + (x.payday.skippedNearest ? ' Skipped payday just received.' : '') : ''}
           </p>
-          <p class="section-label">Excluded from overage (not counted)</p>
+          <p class="section-label">Breakdown</p>
+          <div class="alloc-row"><div class="label">Bills balance (in app)</div><div class="amt">${money(x.bills)}</div></div>
+          <div class="alloc-row"><div class="label">Deposit included</div><div class="amt">${x.depositAmt > 0 ? money(x.depositAmt) : '—'}</div></div>
+          <div class="alloc-row"><div class="label">Mortgage account (covers housing)</div><div class="amt">${money(x.mortgage)}</div></div>
+          <p class="section-label">Excluded from overage</p>
           <div class="alloc-row"><div class="label">Projects</div><div class="amt" style="color:var(--muted)">${money(x.projects)}</div></div>
           <div class="alloc-row"><div class="label">Savings / EF</div><div class="amt" style="color:var(--muted)">${money(x.savingsEf)}</div></div>
-          <div class="alloc-row"><div class="label">Buffer</div><div class="amt" style="color:var(--muted)">${money(x.buffer)}</div></div>
-          <div class="alloc-row"><div class="label">Trent's Pocket</div><div class="amt" style="color:var(--muted)">${money(x.trent)}</div></div>
-          <div class="alloc-row"><div class="label">Bri's Pocket</div><div class="amt" style="color:var(--muted)">${money(x.bri)}</div></div>
+          <div class="alloc-row"><div class="label">Buffer / pockets</div><div class="amt" style="color:var(--muted)">${money(round2(x.buffer + x.trent + x.bri))}</div></div>
           ${x.obligDetails.length ? `
-            <p class="section-label">Still unpaid till next paycheck</p>
+            <p class="section-label">Unpaid items this window (funded by Bills + deposit)</p>
             ${x.obligDetails.slice(0, 12).map(d => `
               <div class="alloc-row">
                 <div class="label">${escapeHtml(d.name)}${d.due ? ' · ' + formatShortDate(d.due) : ''}</div>
@@ -2550,43 +2813,64 @@
       return main.deposit <= adv.deposit ? main.deposit : adv.deposit;
     }
 
-    function upcomingObligations(horizonDays = 40) {
-      // All unpaid housing, bills, and debt minimums due within horizonDays
+    /**
+     * Unpaid housing / bills / debt mins due on or before an end date.
+     * @param {number|{endDate?:Date,horizonDays?:number,strict?:boolean}} opts
+     *   - endDate: only include items with due date <= endDate (preferred for overage)
+     *   - horizonDays: fallback window from today
+     *   - strict: if true, skip items with no due day (avoids inventing "next month" costs)
+     */
+    function upcomingObligations(opts = 40) {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      const horizon = new Date(today);
-      horizon.setDate(horizon.getDate() + horizonDays);
+
+      let horizon;
+      let strict = false;
+      if (opts && typeof opts === 'object') {
+        strict = !!opts.strict;
+        if (opts.endDate) {
+          horizon = new Date(opts.endDate);
+          horizon.setHours(23, 59, 59, 999);
+        } else {
+          const days = opts.horizonDays != null ? opts.horizonDays : 40;
+          horizon = new Date(today);
+          horizon.setDate(horizon.getDate() + Math.max(0, days));
+          horizon.setHours(23, 59, 59, 999);
+        }
+      } else {
+        const days = typeof opts === 'number' ? opts : 40;
+        horizon = new Date(today);
+        horizon.setDate(horizon.getDate() + Math.max(0, days));
+        horizon.setHours(23, 59, 59, 999);
+      }
 
       const details = [];
 
       function addItem(name, amount, due, category, id, key) {
         const amt = Number(amount) || 0;
         if (amt <= 0) return;
-        details.push({ name, amount: amt, due, category, id, key, days: due ? daysUntil(due) : 999 });
+        if (!due || due > horizon) return; // never past next deposit / horizon
+        details.push({ name, amount: amt, due, category, id, key, days: daysUntil(due) });
       }
 
       (state.housing || []).forEach(h => {
         if (isPaidThisPeriod(h)) return;
         if (h.dueDay) {
-          const due = nextDueDate(h.dueDay);
-          if (due && due <= horizon) addItem(h.name, h.amount, due, 'housing', h.id, 'housing');
-        } else {
-          // No due day: treat as needed within ~30 days (must still be funded)
-          const due = new Date(today);
-          due.setDate(due.getDate() + 14);
-          if (due <= horizon) addItem(h.name, h.amount, due, 'housing', h.id, 'housing');
+          const due = nextDueDate(h.dueDay, today);
+          addItem(h.name, h.amount, due, 'housing', h.id, 'housing');
+        } else if (!strict) {
+          // Undated: only count if "today" is still within the window (this pay period)
+          addItem(h.name, h.amount, today, 'housing', h.id, 'housing');
         }
       });
 
       (state.bills || []).forEach(b => {
         if (isPaidThisPeriod(b)) return;
         if (b.dueDay) {
-          const due = nextDueDate(b.dueDay);
-          if (due && due <= horizon) addItem(b.name, b.amount, due, 'bills', b.id, 'bills');
-        } else {
-          const due = new Date(today);
-          due.setDate(due.getDate() + 14);
-          if (due <= horizon) addItem(b.name, b.amount, due, 'bills', b.id, 'bills');
+          const due = nextDueDate(b.dueDay, today);
+          addItem(b.name, b.amount, due, 'bills', b.id, 'bills');
+        } else if (!strict) {
+          addItem(b.name, b.amount, today, 'bills', b.id, 'bills');
         }
       });
 
@@ -2595,19 +2879,16 @@
         const min = Number(d.minPayment) || 0;
         if (min <= 0) return;
         if (d.dueDay) {
-          const due = nextDueDate(d.dueDay);
-          if (due && due <= horizon) addItem(d.name + ' (min)', min, due, 'debt', d.id, 'debts');
-        } else {
-          // No due day: still need to fund minimum this month
-          const due = new Date(today);
-          due.setDate(due.getDate() + 14);
-          if (due <= horizon) addItem(d.name + ' (min)', min, due, 'debt', d.id, 'debts');
+          const due = nextDueDate(d.dueDay, today);
+          addItem(d.name + ' (min)', min, due, 'debt', d.id, 'debts');
+        } else if (!strict) {
+          addItem(d.name + ' (min)', min, today, 'debt', d.id, 'debts');
         }
       });
 
       details.sort((a, b) => a.days - b.days);
       const total = details.reduce((s, d) => s + d.amount, 0);
-      return { total, details };
+      return { total, details, horizon };
     }
 
     // How much of upcoming obligations is NOT yet covered by bill-pay balance
@@ -2765,32 +3046,39 @@
       renderComingUp();
       fillMoveSelects();
 
-      // Debts special
+      // Debts special — snowball order
+      ensureSnowballOrder();
       const dEl = document.getElementById('list-debts');
       if (dEl) {
         if (!state.debts.length) {
           dEl.innerHTML = '<li class="empty">No debts added</li>';
         } else {
-          dEl.innerHTML = state.debts.map(d => {
+          const ordered = debtsInSnowballOrder();
+          dEl.innerHTML = ordered.map(d => {
             const paid = isPaidThisPeriod(d);
             const due = d.dueDay ? nextDueDate(d.dueDay) : null;
             const hasInt = d.hasInterest !== false && (Number(d.rate) > 0 || d.hasInterest === true);
+            const ord = d.snowballOrder || 0;
             let meta = 'Balance ' + money(d.balance) + ' · Min ' + money(d.minPayment);
             if (hasInt && d.rate) meta += ' · ' + d.rate + '% APR';
-            else if (hasInt) meta += ' · interest on (set APR)';
+            else if (hasInt) meta += ' · interest on';
             else meta += ' · no interest';
             if (d.dueDay) meta += ' · due ' + d.dueDay + (due ? ' (' + formatShortDate(due) + ')' : '');
             return `
             <li class="item" style="${paid ? 'opacity:0.55;' : ''}">
               <div class="item-info">
-                <div class="item-name">${paid ? '✓ ' : ''}${escapeHtml(d.name)}
-                  <span class="badge ${d.type === 'credit' ? 'rose' : 'amber'}">${d.type === 'credit' ? 'Credit Card' : 'Other Debt'}</span>
-                  ${hasInt ? '<span class="badge rose">Interest</span>' : '<span class="badge green">0%</span>'}
+                <div class="item-name">${paid ? '✓ ' : ''}
+                  <span class="badge ${ord === 1 ? 'rose' : 'amber'}">Snowball #${ord}</span>
+                  ${escapeHtml(d.name)}
+                  <span class="badge ${d.type === 'credit' ? 'rose' : 'sky'}">${d.type === 'credit' ? 'CC' : 'Other'}</span>
+                  ${hasInt ? '<span class="badge rose">APR</span>' : ''}
                   ${paid ? '<span class="badge green">Min paid</span>' : ''}
                 </div>
-                <div class="item-meta">${meta}</div>
+                <div class="item-meta">${meta}${ord === 1 ? ' · ← all extra hits this one' : ''}</div>
               </div>
               <div class="item-actions">
+                <button class="icon-btn" title="Higher in snowball" onclick="moveDebt('${d.id}',-1)">↑</button>
+                <button class="icon-btn" title="Lower in snowball" onclick="moveDebt('${d.id}',1)">↓</button>
                 <button class="icon-btn" title="${paid ? 'Mark unpaid' : 'Mark min paid'}" onclick="togglePaid('debts','${d.id}')">${paid ? '↩️' : '✅'}</button>
                 <button class="icon-btn" onclick="editItem('debts','${d.id}')">✏️</button>
                 <button class="icon-btn" onclick="deleteItem('debts','${d.id}')">🗑️</button>
@@ -2800,40 +3088,50 @@
         }
       }
 
-      // Goals special (list order = priority)
+      // Goals — type Critical / Emergency / Want
       const gEl = document.getElementById('list-goals');
       if (gEl) {
         if (!state.goals.length) {
           gEl.innerHTML = '<li class="empty">No goals yet</li>';
         } else {
           syncCushionGoalFromAccount();
+          sortGoalsByType();
           gEl.innerHTML = state.goals.map((g, idx) => {
             const cur = Number(g.current) || 0;
-            const pct = g.target > 0 ? Math.min(100, Math.round((cur / g.target) * 1000) / 10) : 0;
-            const fillClass = pct >= 100 ? '' : (pct >= 50 ? 'sky' : (pct >= 25 ? 'amber' : 'rose'));
-            const pri = idx + 1;
+            const tgt = Number(g.target) || 0;
+            const pct = tgt > 0 ? Math.min(100, Math.round((cur / tgt) * 1000) / 10) : 0;
+            const done = tgt > 0 && cur >= tgt - 0.01;
+            const fillClass = done ? '' : (pct >= 50 ? 'sky' : (pct >= 25 ? 'amber' : 'rose'));
+            const gt = g.goalType || 'want';
+            const typeBadge = gt === 'critical' ? '<span class="badge rose">Critical</span>'
+              : gt === 'emergency' ? '<span class="badge amber">Emergency</span>'
+              : '<span class="badge sky">Want</span>';
+            const pauseNote = gt === 'want' && !criticalAndEmergencyDone()
+              ? ' · paused until Critical + Emergency funded'
+              : (done ? ' · TARGET HIT — stopped' : '');
             return `
-              <li class="item" style="flex-direction:column;align-items:stretch;">
+              <li class="item" style="flex-direction:column;align-items:stretch;${done || (gt === 'want' && !criticalAndEmergencyDone()) ? 'opacity:0.7;' : ''}">
                 <div style="display:flex;justify-content:space-between;width:100%;">
                   <div class="item-info">
                     <div class="item-name">
-                      <span class="badge ${pri === 1 ? 'green' : 'sky'}">#${pri}</span>
+                      ${typeBadge}
                       ${escapeHtml(g.name)}
                       ${g.isPrimary ? '<span class="badge green">Primary</span>' : ''}
+                      ${done ? '<span class="badge green">Done</span>' : ''}
                     </div>
-                    <div class="item-meta">${money(cur)} of ${money(g.target)} · ${money(g.monthlyContribute != null ? g.monthlyContribute : 0)}/mo${goalLinkedAccount(g) ? ' · ' + escapeHtml(goalLinkedAccount(g).name) : ''}</div>
+                    <div class="item-meta">${money(cur)} of ${money(tgt)} · ${money(g.monthlyContribute != null ? g.monthlyContribute : 0)}/mo${goalLinkedAccount(g) ? ' · ' + escapeHtml(goalLinkedAccount(g).name) : ''}${pauseNote}</div>
                   </div>
                   <div class="item-actions">
-                    ${!g.isPrimary ? `<button class="icon-btn" title="Set as primary goal" onclick="setPrimaryGoal('${g.id}')">⭐</button>` : ''}
-                    <button class="icon-btn" title="Higher priority" onclick="moveGoal('${g.id}',-1)">↑</button>
-                    <button class="icon-btn" title="Lower priority" onclick="moveGoal('${g.id}',1)">↓</button>
+                    ${!g.isPrimary ? `<button class="icon-btn" title="Set as primary" onclick="setPrimaryGoal('${g.id}')">⭐</button>` : ''}
+                    <button class="icon-btn" title="Move up" onclick="moveGoal('${g.id}',-1)">↑</button>
+                    <button class="icon-btn" title="Move down" onclick="moveGoal('${g.id}',1)">↓</button>
                     <button class="icon-btn" title="Update balance" onclick="quickUpdateGoalBalance('${g.id}')">💵</button>
                     <button class="icon-btn" onclick="editItem('goals','${g.id}')">✏️</button>
                     <button class="icon-btn" onclick="deleteItem('goals','${g.id}')">🗑️</button>
                   </div>
                 </div>
                 <div class="progress-wrap">
-                  <div class="progress-header"><span>Progress</span><span class="pct">${pct}%</span></div>
+                  <div class="progress-header"><span>${done ? 'Complete' : 'Progress'}</span><span class="pct">${pct}%</span></div>
                   <div class="progress-bar"><div class="progress-fill ${fillClass}" style="width:${Math.min(100, pct)}%"></div></div>
                 </div>
               </li>
@@ -2842,32 +3140,17 @@
         }
       }
 
-      // Phase UI
-      const pc = document.getElementById('phase-cushion');
-      const pd = document.getElementById('phase-debt');
-      if (pc && pd) {
-        pc.classList.toggle('active', state.phase === 'cushion');
-        pd.classList.toggle('active', state.phase === 'debt');
+      // Unified plan UI — always show debt % slider
+      const agPanel = document.getElementById('aggression-panel');
+      if (agPanel) agPanel.classList.remove('hidden');
+      const sl = document.getElementById('debt-aggression');
+      if (sl) {
+        sl.value = state.debtAggression != null ? state.debtAggression : 70;
+        onAggressionChange(sl.value);
       }
-      // refresh tip without recursive save
       const tip = document.getElementById('phase-tip');
-      const sub = document.getElementById('header-sub');
-      if (tip && sub) {
-        const agPanel = document.getElementById('aggression-panel');
-        if (state.phase === 'cushion') {
-          tip.textContent = 'Cover dues first, then monthly goal contributions. Leftover stays as buffer.';
-          sub.textContent = 'Build cushion → then attack debt';
-          if (agPanel) agPanel.classList.add('hidden');
-        } else {
-          tip.textContent = 'Minimums first. Use the slider for how aggressive extra debt payments are.';
-          sub.textContent = 'Attacking debt — set aggression';
-          if (agPanel) agPanel.classList.remove('hidden');
-          const sl = document.getElementById('debt-aggression');
-          if (sl) {
-            sl.value = state.debtAggression != null ? state.debtAggression : 70;
-            onAggressionChange(sl.value);
-          }
-        }
+      if (tip) {
+        if (tip) tip.textContent = '';
       }
 
       const ad = document.getElementById('setting-audit-day');
@@ -2883,6 +3166,9 @@
       renderAuditHistory();
       renderRoutingForm();
       onPaycheckTypeChange();
+      // Keep dashboard fresh if it's visible
+      const dash = document.getElementById('tab-dashboard');
+      if (dash && !dash.classList.contains('hidden')) renderDashboard();
     }
 
     function goalLinkedAccount(g) {
@@ -2944,6 +3230,9 @@
       const creditPct = totalDebt > 0 ? Math.min(100, Math.round((creditDebt / totalDebt) * 1000) / 10) : 0;
       const vehiclePct = totalDebt > 0 ? Math.min(100, Math.round((vehicleOther / totalDebt) * 1000) / 10) : 0;
 
+      let otSummary = null;
+      try { otSummary = typeof computeOtNeededSummary === 'function' ? computeOtNeededSummary() : null; } catch (e) { otSummary = null; }
+
       el.innerHTML = `
         <div class="summary-card">
           <div class="label">Monthly Fixed</div>
@@ -2954,6 +3243,10 @@
           <div class="value" style="color:var(--rose)">${money(totalDebt)}</div>
         </div>
         <div class="summary-card">
+          <div class="label">OT needed / mo</div>
+          <div class="value" style="color:${otSummary && !otSummary.covered ? 'var(--rose)' : 'var(--green)'}">${otSummary ? (otSummary.covered ? '0 hrs' : (otSummary.otHoursNeeded + ' hrs')) : '—'}</div>
+        </div>
+        <div class="summary-card">
           <div class="label">Cushion in account</div>
           <div class="value" style="color:var(--green)">${money(cushionNow)}</div>
         </div>
@@ -2961,6 +3254,15 @@
           <div class="label">Cushion Left</div>
           <div class="value" style="color:var(--amber)">${money(cushionLeft)}</div>
         </div>
+        ${otSummary ? `
+        <div class="summary-card" style="grid-column:1/-1;">
+          <div class="label">OT vs minimums (auto)</div>
+          <div style="font-size:0.85rem;margin-top:6px;color:var(--muted);line-height:1.45;">
+            ${otSummary.covered
+              ? 'Base pay + advance cover monthly minimums (' + money(otSummary.monthlyMinimums) + '). No extra OT needed for bills.'
+              : 'Need <strong style="color:var(--rose)">' + otSummary.otHoursNeeded + ' OT hrs/mo</strong> @ 1.5× to cover minimums (' + money(otSummary.monthlyMinimums) + '). Shortfall ' + money(otSummary.gap) + ' · ≈ ' + money(otSummary.netPerOtHour) + '/OT hr net.'}
+          </div>
+        </div>` : ''}
         <div class="summary-card" style="grid-column:1/-1;">
           <div class="label">Debt breakdown</div>
           <div class="alloc-row" style="border:none;padding:6px 0 0;">
@@ -3074,28 +3376,32 @@
           </label>
           <label>APR % (annual rate)</label>
           <input id="m-rate" type="number" inputmode="decimal" step="0.01" min="0" value="${item && item.rate != null ? item.rate : ''}" placeholder="e.g. 22.9" />
-          <p class="tip" style="margin-top:8px;">If interest is on, Sim adds ~APR÷12 each month before payments. Off = principal-only (0% promo, etc.).</p>
+          
         `;
       } else if (key === 'goals') {
-        const linked = item ? goalLinkedAccount(item) : null;
-        const curVal = linked ? (Number(linked.balance) || 0) : (item ? item.current : 0);
+        const curVal = item ? (Number(item.current) || 0) : 0;
+        const gt = item ? (item.goalType || 'want') : 'critical';
         const acctOpts = (state.accounts || []).map(a =>
           `<option value="${a.id}" ${(item && item.accountId === a.id) || (!item && a.id === 'acct-misc') ? 'selected' : ''}>${escapeHtml(a.name)}</option>`
         ).join('');
         fields = `
           <label>Name</label>
-          <input id="m-name" value="${item ? escapeHtml(item.name) : ''}" placeholder="e.g. Savings" />
-          <label>Target amount ($)</label>
-          <input id="m-target" type="number" inputmode="decimal" step="0.01" min="0" value="${item ? item.target : ''}" />
+          <input id="m-name" value="${item ? escapeHtml(item.name) : ''}" placeholder="e.g. Electrical panel" />
+          <label>Type</label>
+          <select id="m-goal-type">
+            <option value="critical" ${gt === 'critical' ? 'selected' : ''}>Critical — must-do (insurance, panel, safety)</option>
+            <option value="emergency" ${gt === 'emergency' ? 'selected' : ''}>Emergency — baby / starter EF cushion</option>
+            <option value="want" ${gt === 'want' ? 'selected' : ''}>Want — paused until consumer debt is gone</option>
+          </select>
+          <label>Hard target ($)</label>
+          <input id="m-target" type="number" inputmode="decimal" step="0.01" min="0" value="${item ? item.target : ''}" placeholder="Stop funding when reached" />
           <label>Current saved ($)</label>
           <input id="m-current" type="number" inputmode="decimal" step="0.01" min="0" value="${curVal}" />
           <label>Contribute per month ($)</label>
           <input id="m-monthly" type="number" inputmode="decimal" step="0.01" min="0" value="${item && item.monthlyContribute != null ? item.monthlyContribute : 200}" />
           <label>Linked bank account</label>
           <select id="m-goal-account">${acctOpts}</select>
-          <p class="tip" style="margin-top:8px;">
-            “Current saved” is this goal’s own progress. Linked account is only where new deposits go (e.g. Projects, Savings / EF) — not shared as every goal’s balance.
-          </p>
+          <p class="tip" style="margin-top:8px;">Stops when current ≥ target. Want goals pause while Critical/Emergency open or debt remains.</p>
         `;
       } else if (key === 'income') {
         fields = `
@@ -3182,6 +3488,7 @@
         obj.current = Number(document.getElementById('m-current').value) || 0;
         obj.monthlyContribute = Number(document.getElementById('m-monthly')?.value) || 0;
         obj.accountId = document.getElementById('m-goal-account')?.value || 'acct-misc';
+        obj.goalType = document.getElementById('m-goal-type')?.value || 'want';
         // Goal "current" is its own envelope — does not overwrite bank account balance
         if (editing.id) {
           const existing = state.goals.find(g => g.id === editing.id);
@@ -3494,84 +3801,85 @@
         null
       );
 
+      // Order: bills (done) → allowance → Critical/Emergency goals (until target) → debt snowball → buffer
       const paysPerMonth = 2;
+      sortGoalsByType();
+      const capsDone = criticalAndEmergencyDone();
+      // Only fund Critical & Emergency that are not complete. Want stays frozen while any open consumer debt OR caps not done.
+      const openConsumerDebt = (state.debts || []).some(d => (Number(d.balance) || 0) > 0.01);
       const goalsToFund = (state.goals || []).filter(g => {
-        const left = Math.max(0, (Number(g.target) || 0) - (Number(g.current) || 0));
+        if (goalIsComplete(g)) return false;
         const monthly = Number(g.monthlyContribute) || 0;
-        return left > 0.01 && monthly > 0.01;
+        if (monthly <= 0.01) return false;
+        const gt = g.goalType || 'want';
+        if (gt === 'critical' || gt === 'emergency') return true;
+        // Want: only after Critical+Emergency done AND no consumer debt
+        return capsDone && !openConsumerDebt;
       });
-      // Fund in Goals list priority order (#1 first)
-      // goalsToFund already follows state.goals order
 
-      if (state.phase === 'cushion') {
-        goalsToFund.forEach(g => {
-          const left = Math.max(0, (Number(g.target) || 0) - (Number(g.current) || 0));
-          const perCheck = round2((Number(g.monthlyContribute) || 0) / paysPerMonth);
-          const want = Math.min(left, perCheck);
-          take(g.name, want, g.isPrimary ? 'green' : 'purple',
-            money(g.monthlyContribute) + '/mo → ~' + money(perCheck) + '/check', 'goal', g.id);
-        });
+      // 4) Allowance every check
+      (state.everyday || []).forEach(e => {
+        const amt = Number(e.amount) || 0;
+        if (amt <= 0 || remaining < 0.01) return;
+        const acct = getAccountById(e.accountTo);
+        take(e.name, amt, 'purple', '→ ' + (acct ? acct.name : 'account'), 'everyday', e.id);
+      });
+
+      // 5) Critical then Emergency (auto-stop at target)
+      goalsToFund.forEach((g) => {
+        const left = Number(g.target) > 0
+          ? Math.max(0, (Number(g.target) || 0) - (Number(g.current) || 0))
+          : Infinity;
+        const perCheck = round2((Number(g.monthlyContribute) || 0) / paysPerMonth);
+        const want = left === Infinity ? perCheck : Math.min(left, perCheck);
+        if (want <= 0.01 || remaining < 0.01) return;
+        const gt = g.goalType || 'want';
+        const tag = gt === 'critical' ? 'Critical' : (gt === 'emergency' ? 'Emergency' : 'Want');
+        take(
+          g.name,
+          want,
+          gt === 'critical' ? 'rose' : (gt === 'emergency' ? 'amber' : 'purple'),
+          tag + ' · ' + money(g.monthlyContribute) + '/mo → ~' + money(perCheck) + '/check · left ' + (left === Infinity ? '∞' : money(left)),
+          'goal',
+          g.id
+        );
+      });
+
+      // 6) Snowball: leftover % → debt #1 first (smallest balance order)
+      ensureSnowballOrder();
+      const aggressionPct = state.debtAggression != null ? state.debtAggression : 100;
+      const aggression = aggressionPct / 100;
+      const pool = remaining;
+      let debtBudget = round2(pool * aggression);
+      const debtsSorted = debtsInSnowballOrder().filter(d => (Number(d.balance) || 0) > 0.01);
+      for (const d of debtsSorted) {
+        if (debtBudget < 0.01 || remaining < 0.01) break;
+        const bal = Number(d.balance) || 0;
+        const pay = Math.min(debtBudget, remaining, bal);
+        if (pay <= 0.005) break;
+        take(
+          'Snowball → ' + d.name,
+          pay,
+          d.type === 'credit' ? 'rose' : 'amber',
+          'Debt #' + (d.snowballOrder || '?') + ' · ' + aggressionPct + '% of leftover after Critical/Emergency',
+          'extra_debt',
+          d.id
+        );
+        debtBudget = round2(debtBudget - pay);
+        // Classic snowball: stay on this debt until this check can't pay more of it
+        if (bal - pay > 0.01) break;
       }
-
-      if (state.phase === 'debt') {
-        // Allowance still funded each check
-        (state.everyday || []).forEach(e => {
-          const amt = Number(e.amount) || 0;
-          if (amt <= 0 || remaining < 0.01) return;
-          const acct = getAccountById(e.accountTo);
-          take(e.name, amt, 'purple', '→ ' + (acct ? acct.name : 'account'), 'everyday', e.id);
-        });
-        goalsToFund.forEach(g => {
-          const left = Math.max(0, (Number(g.target) || 0) - (Number(g.current) || 0));
-          const perCheck = round2((Number(g.monthlyContribute) || 0) / paysPerMonth);
-          take(g.name, Math.min(left, perCheck), 'purple', money(g.monthlyContribute) + '/mo', 'goal', g.id);
-        });
-        const aggressionPct = state.debtAggression != null ? state.debtAggression : 70;
-        const aggression = aggressionPct / 100;
-        const pool = remaining;
-        let debtBudget = round2(pool * aggression);
-        const debtsSorted = [...state.debts]
-          .filter(d => d.balance > 0)
-          .sort((a, b) => {
-            if (a.type === 'credit' && b.type !== 'credit') return -1;
-            if (b.type === 'credit' && a.type !== 'credit') return 1;
-            const ra = a.rate || 0, rb = b.rate || 0;
-            if (rb !== ra) return rb - ra;
-            return (b.balance || 0) - (a.balance || 0);
-          });
-        for (const d of debtsSorted) {
-          if (debtBudget < 0.01 || remaining < 0.01) break;
-          const pay = Math.min(debtBudget, remaining, Number(d.balance) || 0);
-          take('Extra → ' + d.name, pay,
-            d.type === 'credit' ? 'rose' : 'amber',
-            aggressionPct + '% aggression',
-            'extra_debt', d.id);
-          debtBudget = round2(debtBudget - pay);
-        }
-        // Whatever remains stays as buffer (includes the non-aggression share)
-        if (remaining > 0.005) {
-          take('Buffer kept this check', remaining, 'amber',
-            aggressionPct + '% aggression → ' + money(round2(pool * aggression)) + ' to debt max; rest kept',
-            'leftover', null);
-        }
-      } else {
-        // Fund each allowance line (per paycheck)
-        (state.everyday || []).forEach(e => {
-          const amt = Number(e.amount) || 0;
-          if (amt <= 0 || remaining < 0.01) return;
-          const acct = getAccountById(e.accountTo);
-          take(
-            e.name,
-            amt,
-            'purple',
-            '→ ' + (acct ? acct.name : 'account'),
-            'everyday',
-            e.id
-          );
-        });
-        if (remaining > 0.005) {
-          take('Leftover in checking', remaining, 'amber', 'stays in deposit account', 'leftover', null);
-        }
+      if (remaining > 0.005) {
+        take(
+          'Buffer kept this check',
+          remaining,
+          'amber',
+          capsDone
+            ? (aggressionPct + '% to snowball; rest stays in Bills')
+            : 'After Critical/Emergency; rest stays in Bills',
+          'leftover',
+          null
+        );
       }
 
       const totalAllocated = round2(alloc.reduce((s, l) => s + l.amount, 0));
@@ -3583,7 +3891,7 @@
       let html = `
         <div class="result-box ${mathOk ? '' : 'warn'}">
           <h3>${escapeHtml(payLabel)} — split of ${money(amount)}</h3>
-          <p style="font-size:0.78rem;color:var(--muted);margin-bottom:8px;">Type an exact amount or drag the slider. Total stays equal to the deposit; leftover absorbs the difference.</p>
+          
           <div id="alloc-sliders">
           ${alloc.map((l, i) => {
             const pct = amount > 0 ? Math.min(100, Math.round((l.amount / amount) * 1000) / 10) : 0;
@@ -4467,24 +4775,27 @@
       const monthlyFixed = monthlyHousing + monthlyBills + totalMin;
       const payday = nextPaydayInfo();
       const daysToPay = Math.max(1, payday.days || 1);
+      const payEnd = payday && payday.date ? new Date(payday.date) : null;
       const trent = getAccountById('acct-trent');
       const bri = getAccountById('acct-bri');
       const grocery = (state.everyday || []).find(e => /groc/i.test(e.name || ''));
       const groceryBudget = grocery ? (Number(grocery.amount) || 0) : 0;
 
-      // Unpaid obligations only, through next paycheck (skips items marked paid)
-      const untilPay = upcomingObligations(daysToPay);
+      // Unpaid obligations only — due on or before next deposit date (never next month past that)
+      const untilPay = payEnd
+        ? upcomingObligations({ endDate: payEnd, strict: true })
+        : upcomingObligations({ horizonDays: daysToPay, strict: true });
       const unpaidBills = (untilPay.details || []).filter(d => d.category === 'housing' || d.category === 'bills');
       const unpaidDebtMins = (untilPay.details || []).filter(d => d.category === 'debt');
       const billsLeftTotal = round2(unpaidBills.reduce((s, d) => s + d.amount, 0));
       const debtMinsLeftTotal = round2(unpaidDebtMins.reduce((s, d) => s + d.amount, 0));
 
-      const extra = computeExtraCash(daysToPay);
+      const extra = computeExtraCash(daysToPay, { endDate: payEnd });
 
       let lines = [];
       lines.push('📊 WEEKLY MONEY REPORT');
       lines.push('Date: ' + reportDate);
-      lines.push('Mode: ' + (state.phase === 'cushion' ? 'Building Savings' : 'Attacking Debt (CCs first)'));
+      lines.push('Plan: bills → goals → ' + (state.debtAggression != null ? state.debtAggression : 70) + '% leftover to debt');
       lines.push('');
       lines.push('—— SPENDING LEFT ——');
       lines.push("Trent's Pocket:  " + money(trent ? trent.balance : 0));
@@ -4492,7 +4803,7 @@
       lines.push('Groceries budget/check: ' + money(groceryBudget));
       lines.push('');
       lines.push('—— BILLS LEFT TILL NEXT PAYCHECK ——');
-      lines.push('(Unpaid only · next ' + daysToPay + ' day(s))');
+      lines.push('(Unpaid only · due on or before ' + (payday.label || ('next ' + daysToPay + ' day(s)')) + ')');
       if (!unpaidBills.length) {
         lines.push('None — all marked paid or nothing due.');
       } else {
@@ -4514,15 +4825,20 @@
       lines.push('');
       lines.push('—— BILLS OVERAGE ——');
       lines.push('Bills balance:              ' + money(extra.bills));
-      lines.push('Still needed from Bills:    ' + money(extra.stillDueFromBills));
+      if (extra.depositAmt > 0) {
+        lines.push('Deposit included:           ' + money(extra.depositAmt));
+        lines.push('Bills + deposit:            ' + money(extra.billsAvailable));
+      }
+      lines.push('Still needed (this window): ' + money(extra.stillDueFromBills));
+      lines.push('Covered by Bills/deposit:   ' + money(extra.coveredByDeposit || 0));
       lines.push('OVERAGE (free to move):     ' + money(extra.extra));
       lines.push('(Excludes Projects, Savings/EF, Buffer, pockets)');
       if (extra.shortfall > 0) {
-        lines.push('⚠️ Shortfall in Bills: ' + money(extra.shortfall));
+        lines.push('⚠️ Shortfall after deposit: ' + money(extra.shortfall));
       } else if (extra.extra > 0) {
         lines.push('Move overage to Projects, Savings, or spending as you like.');
       } else {
-        lines.push('No overage — Bills is spoken for till next paycheck.');
+        lines.push('No overage — Bills + deposit covers unpaid items till next paycheck.');
       }
       lines.push('');
       lines.push('—— HOW WE’RE DOING ——');
