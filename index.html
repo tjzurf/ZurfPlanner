@@ -338,33 +338,23 @@ textarea { min-height: 72px; resize: vertical; }
     <!-- ========== SIMULATE TAB ========== -->
     <div id="tab-sim" class="hidden">
       <div class="card">
-        <h2><span class="dot" style="background:var(--purple)"></span> What-if simulator</h2>
-                <div class="section-label">Starting balances (sandbox)</div>
+        <h2><span class="dot" style="background:var(--purple)"></span> Month-by-month sim</h2>
+        <div class="section-label">Starting balances</div>
         <div id="sim-start-balances"></div>
         <button class="btn secondary" onclick="simLoadFromLive()">Reload from live accounts</button>
 
-        <div class="section-label">What to simulate</div>
-        <label>Mode</label>
-        <select id="sim-mode" onchange="onSimModeChange()">
-          <option value="paycheck-25">Next paycheck only — 25th advance → until 10th</option>
-          <option value="paycheck-10">Next paycheck only — 10th main → until 25th</option>
-          <option value="months">Full months (both checks each month)</option>
-        </select>
-
-        <div class="section-label">Pay amounts</div>
-        <label>Typical main check net (10th) $</label>
+        <div class="section-label">Monthly income</div>
+        <label>Main check net (10th) $</label>
         <input type="number" id="sim-main-net" inputmode="decimal" step="0.01" min="0" placeholder="e.g. 8500" />
         <label>Advance (25th) $</label>
         <input type="number" id="sim-advance" inputmode="decimal" step="0.01" min="0" value="3000" />
-        <div id="sim-months-wrap">
-          <label>Months to project</label>
-          <input type="number" id="sim-months" inputmode="numeric" min="1" max="60" value="6" />
-        </div>
+        <label>Months to project</label>
+        <input type="number" id="sim-months" inputmode="numeric" min="1" max="60" value="12" />
 
-        <div class="section-label" id="sim-costs-label">Costs for this window</div>
-        <label id="sim-fixed-label">Bills / housing / debt mins due this window $</label>
+        <div class="section-label">Monthly costs</div>
+        <label>Housing + bills + debt mins $</label>
         <input type="number" id="sim-fixed" inputmode="decimal" step="0.01" min="0" />
-        <label id="sim-allow-label">Allowance this check $</label>
+        <label>Allowance per check (×2 / month) $</label>
         <input type="number" id="sim-allowance" inputmode="decimal" step="0.01" min="0" value="750" />
 
         <button class="btn" onclick="runSimulation()">Run simulation</button>
@@ -1010,23 +1000,12 @@ textarea { min-height: 72px; resize: vertical; }
           value="${Number(a.balance) || 0}" />
       `).join('');
 
-      const mode = document.getElementById('sim-mode')?.value || 'paycheck-25';
       const fixedEl = document.getElementById('sim-fixed');
       if (fixedEl && !fixedEl.dataset.touched) {
-        if (mode === 'months') {
-          const fixed = sum(state.housing || [], 'amount') + sum(state.bills || [], 'amount') + sum(state.debts || [], 'minPayment');
-          fixedEl.value = fixed.toFixed(2);
-        } else {
-          const pay = typeof nextPaydayInfo === 'function' ? nextPaydayInfo(new Date(), { skipNearest: true }) : null;
-          const days = Math.max(1, (pay && pay.days) || 15);
-          const oblig = typeof upcomingObligations === 'function' ? upcomingObligations(days) : { total: 0 };
-          fixedEl.value = (Number(oblig.total) || 0).toFixed(2);
-        }
+        const fixed = sum(state.housing || [], 'amount') + sum(state.bills || [], 'amount') + sum(state.debts || [], 'minPayment');
+        fixedEl.value = fixed.toFixed(2);
       }
       if (fixedEl) fixedEl.onchange = () => { fixedEl.dataset.touched = '1'; };
-      // Keep mode UI in sync
-      const monthsWrap = document.getElementById('sim-months-wrap');
-      if (monthsWrap) monthsWrap.style.display = mode === 'months' ? '' : 'none';
 
       const allow = sum(state.everyday || [], 'amount');
       const allowEl = document.getElementById('sim-allowance');
@@ -1054,63 +1033,18 @@ textarea { min-height: 72px; resize: vertical; }
       if (res) res.classList.add('hidden');
     }
 
-    function onSimModeChange() {
-      const mode = document.getElementById('sim-mode')?.value || 'paycheck-25';
-      const monthsWrap = document.getElementById('sim-months-wrap');
-      const tip = document.getElementById('sim-mode-tip');
-      const costsTip = document.getElementById('sim-costs-tip');
-      const fixedLabel = document.getElementById('sim-fixed-label');
-      const allowLabel = document.getElementById('sim-allow-label');
-      if (monthsWrap) monthsWrap.style.display = mode === 'months' ? '' : 'none';
-      if (tip) {
-        if (mode === 'paycheck-25') {
-          tip.textContent = 'Only the 25th advance until the next 10th — unpaid bills due in that window + one allowance, not a full month.';
-        } else if (mode === 'paycheck-10') {
-          tip.textContent = 'Only the 10th main check until the next 25th — unpaid bills due in that window + one allowance.';
-        } else {
-          tip.textContent = 'Full months: both checks each month, full monthly housing/bills/mins + two allowances.';
-        }
-      }
-      if (costsTip) {
-        costsTip.textContent = mode === 'months'
-          ? 'Full monthly housing + bills + debt mins. Allowance is per check (×2 applied automatically).'
-          : 'Auto-filled from unpaid items due before the next deposit. Edit if you want a different assumption.';
-      }
-      if (fixedLabel) {
-        fixedLabel.textContent = mode === 'months'
-          ? 'Housing + bills + debt mins (monthly) $'
-          : 'Bills / housing / debt mins due this window $';
-      }
-      if (allowLabel) {
-        allowLabel.textContent = mode === 'months' ? 'Allowance per check (×2 per month) $' : 'Allowance this check $';
-      }
-      // Refresh default fixed amount for mode
-      const fixedEl = document.getElementById('sim-fixed');
-      if (fixedEl) delete fixedEl.dataset.touched;
-      prepareSimForm();
-    }
+    function onSimModeChange() { /* mode selection removed — always full months */ }
 
     let lastSim = null; // sandbox plan
 
     function runSimulation() {
-      const mode = document.getElementById('sim-mode')?.value || 'paycheck-25';
       const mainNet = Number(document.getElementById('sim-main-net')?.value) || 0;
       const advance = Number(document.getElementById('sim-advance')?.value) || 0;
-      const months = mode === 'months'
-        ? Math.min(60, Math.max(1, parseInt(document.getElementById('sim-months')?.value, 10) || 6))
-        : 1;
-      let fixedMo = Number(document.getElementById('sim-fixed')?.value) || 0;
+      const months = Math.min(60, Math.max(1, parseInt(document.getElementById('sim-months')?.value, 10) || 12));
+      const fixedMo = Number(document.getElementById('sim-fixed')?.value) || 0;
       const allowPerCheck = Number(document.getElementById('sim-allowance')?.value) || 0;
 
-      if (mode === 'paycheck-25' && advance <= 0) {
-        alert('Enter the advance amount (25th).');
-        return;
-      }
-      if (mode === 'paycheck-10' && mainNet <= 0) {
-        alert('Enter a typical main check net (10th).');
-        return;
-      }
-      if (mode === 'months' && mainNet <= 0 && advance <= 0) {
+      if (mainNet <= 0 && advance <= 0) {
         alert('Enter a typical main check net (and/or advance).');
         return;
       }
@@ -1123,74 +1057,42 @@ textarea { min-height: 72px; resize: vertical; }
         if (startBal[id] == null) startBal[id] = 0;
       });
 
+      if (typeof sortGoalsByType === 'function') sortGoalsByType();
+      if (typeof ensureSnowballOrder === 'function') ensureSnowballOrder();
+
       const goalsMeta = (state.goals || []).map(g => ({
         id: g.id,
         name: g.name,
         target: Number(g.target) || 0,
         current: Number(g.current) || 0,
+        monthlyContribute: Number(g.monthlyContribute) || 0,
+        goalType: g.goalType || 'want',
         accountId: g.accountId || (goalLinkedAccount(g) && goalLinkedAccount(g).id) || null,
         isPrimary: !!g.isPrimary
       }));
 
-      let income = 0;
-      let allowMo = 0;
-      let living = 0;
-      let periodLabel = '';
-      let daysHorizon = 40;
-
-      if (mode === 'paycheck-25') {
-        income = advance;
-        allowMo = allowPerCheck; // one check
-        // Horizon: days until next 10th deposit (skip nearest if that is the 25th we're simulating)
-        const pay = nextPaydayInfo(new Date(), { skipNearest: true });
-        daysHorizon = Math.max(1, pay.days || 15);
-        // Prefer unpaid obligations in that window for living (if fixed wasn't manually set)
-        const fixedEl = document.getElementById('sim-fixed');
-        if (fixedEl && !fixedEl.dataset.touched) {
-          const oblig = upcomingObligations(daysHorizon);
-          fixedMo = round2(oblig.total || 0);
-          fixedEl.value = fixedMo.toFixed(2);
-        }
-        living = round2(fixedMo + allowMo);
-        periodLabel = '25th advance → next 10th (' + daysHorizon + ' days)';
-      } else if (mode === 'paycheck-10') {
-        income = mainNet;
-        allowMo = allowPerCheck;
-        const pay = nextPaydayInfo(new Date(), { skipNearest: true });
-        daysHorizon = Math.max(1, pay.days || 15);
-        const fixedEl = document.getElementById('sim-fixed');
-        if (fixedEl && !fixedEl.dataset.touched) {
-          const oblig = upcomingObligations(daysHorizon);
-          fixedMo = round2(oblig.total || 0);
-          fixedEl.value = fixedMo.toFixed(2);
-        }
-        living = round2(fixedMo + allowMo);
-        periodLabel = '10th main → next 25th (' + daysHorizon + ' days)';
-      } else {
-        income = round2(advance + mainNet);
-        allowMo = allowPerCheck * 2;
-        living = round2(fixedMo + allowMo);
-        periodLabel = months + ' full month' + (months > 1 ? 's' : '');
-        daysHorizon = months * 30;
-      }
-
+      const income = round2(advance + mainNet);
+      const allowMo = allowPerCheck * 2;
+      const living = round2(fixedMo + allowMo);
       const residual = round2(Math.max(0, income - living));
+      const aggression = (state.debtAggression != null ? state.debtAggression : 100) / 100;
 
       lastSim = {
-        mode,
-        periodLabel,
-        daysHorizon,
+        mode: 'months',
+        periodLabel: months + ' month' + (months > 1 ? 's' : ''),
         mainNet, advance, months, fixedMo, allowPerCheck, allowMo, living, residual,
-        monthlyIncome: income, // period income (name kept for projection)
+        monthlyIncome: income,
+        aggression,
         startBal: { ...startBal },
         debtMins: sum(state.debts || [], 'minPayment'),
-        debtsMeta: (state.debts || []).map(d => ({
+        debtsMeta: (typeof debtsInSnowballOrder === 'function' ? debtsInSnowballOrder() : (state.debts || [])).map(d => ({
           id: d.id,
           name: d.name,
           type: d.type,
           balance: Number(d.balance) || 0,
           minPayment: Number(d.minPayment) || 0,
           rate: Number(d.rate) || 0,
+          snowballOrder: d.snowballOrder || 999,
           hasInterest: d.hasInterest === true || (d.hasInterest !== false && Number(d.rate) > 0)
         })),
         goalsMeta
@@ -1266,22 +1168,20 @@ textarea { min-height: 72px; resize: vertical; }
       const allowMo = lastSim.allowMo || 0;
       const { months, startBal, goalsMeta, debtsMeta } = lastSim;
       const periodIncome = Number(lastSim.monthlyIncome) || 0;
-      const isPaycheckMode = lastSim.mode === 'paycheck-25' || lastSim.mode === 'paycheck-10';
+      const aggression = lastSim.aggression != null ? lastSim.aggression : 1;
 
-      // goal balances sandbox
       const goalBal = {};
       (goalsMeta || []).forEach(g => { goalBal[g.id] = g.current; });
 
-      // Per-debt sandbox (interest-aware)
       const debtBal = (debtsMeta || []).map(d => ({ ...d, balance: d.balance }));
-      // Payoff order: credit cards first, then highest rate, then balance
-      const debtPayOrder = () => [...debtBal].filter(d => d.balance > 0.01).sort((a, b) => {
-        if (a.type === 'credit' && b.type !== 'credit') return -1;
-        if (b.type === 'credit' && a.type !== 'credit') return 1;
-        return (b.rate || 0) - (a.rate || 0) || (b.balance - a.balance);
-      });
+      // Snowball order (smallest first / user order)
+      const debtPayOrder = () => [...debtBal]
+        .filter(d => d.balance > 0.01)
+        .sort((a, b) => (a.snowballOrder || 999) - (b.snowballOrder || 999) || (a.balance - b.balance));
 
-      const goalOrder = [...(goalsMeta || [])];
+      // Critical → Emergency → Want (only after caps + no debt)
+      const typeRank = t => (t === 'critical' ? 0 : t === 'emergency' ? 1 : 2);
+      const goalOrder = [...(goalsMeta || [])].sort((a, b) => typeRank(a.goalType) - typeRank(b.goalType));
 
       const bal = { ...startBal };
       let totalIncome = 0, totalSaved = 0, totalDebtPaid = 0, totalInterest = 0;
@@ -1292,12 +1192,10 @@ textarea { min-height: 72px; resize: vertical; }
       (goalsMeta || []).forEach(g => { goalReceived[g.id] = 0; });
 
       for (let m = 1; m <= months; m++) {
-        // Accrue interest (full month rate only in multi-month mode; ~half-month for single paycheck)
-        const interestFactor = isPaycheckMode ? 0.5 : 1;
         debtBal.forEach(d => {
           if (d.balance <= 0.01) { d.balance = 0; return; }
           if (d.hasInterest && d.rate > 0) {
-            const interest = round2(d.balance * (d.rate / 100 / 12) * interestFactor);
+            const interest = round2(d.balance * (d.rate / 100 / 12));
             d.balance = round2(d.balance + interest);
             totalInterest = round2(totalInterest + interest);
           }
@@ -1306,11 +1204,10 @@ textarea { min-height: 72px; resize: vertical; }
         bal['acct-bills'] = round2((bal['acct-bills'] || 0) + periodIncome);
         totalIncome = round2(totalIncome + periodIncome);
 
-        // Fixed costs (housing + bills portion of fixedMo excluding we still take full fixedMo from bills)
         const fixedPay = Math.min(fixedMo, bal['acct-bills'] || 0);
         bal['acct-bills'] = round2((bal['acct-bills'] || 0) - fixedPay);
 
-        // Apply each debt's minimum (from the fixed budget conceptually; still reduce principal)
+        // Debt minimums (principal)
         let minsThisMo = 0;
         debtBal.forEach(d => {
           if (d.balance <= 0.01) return;
@@ -1324,54 +1221,60 @@ textarea { min-height: 72px; resize: vertical; }
         const allowPay = Math.min(allowMo, bal['acct-bills'] || 0);
         bal['acct-bills'] = round2((bal['acct-bills'] || 0) - allowPay);
 
-        // Waterfall residual after living: ALL leftover → goals by priority, then debt
-        let residual = round2(Math.max(0, (bal['acct-bills'] || 0)));
-        // residual is what's left in bills after fixed+allow; use it for goals then debt
-        let pool = residual;
+        let pool = round2(Math.max(0, bal['acct-bills'] || 0));
+        const openDebt = debtBal.some(d => d.balance > 0.01);
+        const openCritEmerg = goalOrder.some(g =>
+          (g.goalType === 'critical' || g.goalType === 'emergency') &&
+          g.target > 0 && (goalBal[g.id] || 0) < g.target - 0.01
+        );
 
         let savedThisMo = 0;
         goalOrder.forEach(g => {
           if (pool <= 0.005) return;
+          const gt = g.goalType || 'want';
+          if (gt === 'want' && (openCritEmerg || openDebt)) return;
+          if (gt !== 'critical' && gt !== 'emergency' && gt !== 'want') return;
+
           const cur = goalBal[g.id] || 0;
-          let room;
-          if (g.target > 0) {
-            room = Math.max(0, g.target - cur);
-            if (room <= 0.005) return;
-          } else {
-            // No target: skip until all targeted goals done, then could absorb — leave for debt instead
-            return;
-          }
-          const pay = round2(Math.min(pool, room));
+          if (g.target > 0 && cur >= g.target - 0.01) return;
+          const room = g.target > 0 ? Math.max(0, g.target - cur) : 0;
+          if (g.target > 0 && room <= 0.005) return;
+          // Monthly contribute cap (full month = both checks)
+          const moCap = Number(g.monthlyContribute) || 0;
+          if (moCap <= 0.01 && gt !== 'want') return;
+          const want = g.target > 0
+            ? Math.min(room, moCap > 0 ? moCap : room)
+            : (moCap > 0 ? moCap : 0);
+          if (want <= 0.01) return;
+          const pay = round2(Math.min(pool, want));
           if (pay <= 0) return;
           bal['acct-bills'] = round2((bal['acct-bills'] || 0) - pay);
           goalBal[g.id] = round2(cur + pay);
-          if (g.accountId && bal[g.accountId] != null) {
-            bal[g.accountId] = round2((bal[g.accountId] || 0) + pay);
-          }
+          if (g.accountId) bal[g.accountId] = round2((bal[g.accountId] || 0) + pay);
           pool = round2(pool - pay);
           savedThisMo = round2(savedThisMo + pay);
           totalSaved = round2(totalSaved + pay);
           goalReceived[g.id] = round2((goalReceived[g.id] || 0) + pay);
-          if (goalHitMonth[g.id] == null && goalBal[g.id] >= g.target - 0.01) {
+          if (g.target > 0 && goalHitMonth[g.id] == null && goalBal[g.id] >= g.target - 0.01) {
             goalHitMonth[g.id] = m;
           }
         });
 
-        // Everything still left after goals → extra debt (avalanche)
-        let extraLeft = pool;
+        // Leftover × aggression → snowball #1, then next when paid off
+        let extraLeft = round2(pool * aggression);
         let extraPaid = 0;
-        debtPayOrder().forEach(d => {
-          if (extraLeft <= 0.01) return;
+        for (const d of debtPayOrder()) {
+          if (extraLeft <= 0.01) break;
           const pay = Math.min(extraLeft, d.balance);
-          if (pay <= 0) return;
+          if (pay <= 0) break;
           d.balance = round2(Math.max(0, d.balance - pay));
           extraLeft = round2(extraLeft - pay);
           extraPaid = round2(extraPaid + pay);
           totalDebtPaid = round2(totalDebtPaid + pay);
           bal['acct-bills'] = round2((bal['acct-bills'] || 0) - pay);
           if (d.balance <= 0.01 && debtHitMonth[d.id] == null) debtHitMonth[d.id] = m;
-        });
-        // If debts all paid, residual stays in Bills as buffer
+          if (d.balance > 0.01) break; // stay on #1
+        }
 
         const totalDebtNow = round2(debtBal.reduce((s, d) => s + (d.balance || 0), 0));
 
@@ -1382,6 +1285,8 @@ textarea { min-height: 72px; resize: vertical; }
           debt: totalDebtNow,
           savedThisMo,
           debtPaidThisMo: round2(minsThisMo + extraPaid),
+          extraDebt: extraPaid,
+          minsDebt: minsThisMo,
           fixedThisMo: fixedPay,
           allowThisMo: allowPay,
           goalSnapshot: { ...goalBal }
@@ -1448,48 +1353,37 @@ textarea { min-height: 72px; resize: vertical; }
         const current = g.current;
         const target = g.target;
         const endBal = goalBal[g.id] || 0;
+        const gt = g.goalType || 'want';
+        const typeLabel = gt === 'critical' ? 'Critical' : (gt === 'emergency' ? 'Emergency' : 'Want');
         let monthsNeeded = null;
         let status = '';
-        if (target <= 0) {
-          status = 'No target — skipped (residual goes to next goal / debt)';
+        if (gt === 'want') {
+          status = 'Want — paused until Critical/Emergency done and debt gone';
+        } else if (target <= 0) {
+          status = 'No hard target set';
         } else if (current >= target) {
           monthsNeeded = 0;
-          status = 'Already met — residual cascades to next';
+          status = 'Already met';
         } else if (goalHitMonth[g.id] != null) {
           monthsNeeded = goalHitMonth[g.id];
-          status = 'Hit in month ' + monthsNeeded + ' of this sim';
-        } else if (monthlyResidual <= 0) {
-          status = 'No leftover after living costs';
+          status = 'Hit in month ' + monthsNeeded;
+        } else if (!(Number(g.monthlyContribute) > 0)) {
+          status = 'No monthly contribute set';
         } else {
-          let simBal = {};
-          (goalsMeta || []).forEach(x => { simBal[x.id] = x.current; });
-          let mo = 0;
-          const maxMo = 240;
-          while (mo < maxMo && (simBal[g.id] || 0) < target) {
-            mo++;
-            let p = monthlyResidual;
-            goalOrder.forEach(og => {
-              if (p <= 0) return;
-              const c = simBal[og.id] || 0;
-              if (!(og.target > 0) || c >= og.target) return;
-              const room = Math.max(0, og.target - c);
-              const pay = Math.min(p, room);
-              simBal[og.id] = round2(c + pay);
-              p = round2(p - pay);
-            });
-          }
-          monthsNeeded = mo >= maxMo ? null : mo;
-          status = monthsNeeded != null
-            ? '~' + monthsNeeded + ' months (living → goals by priority → debt)'
-            : 'Not reached in 20 years at this income';
+          const moCap = Number(g.monthlyContribute) || 0;
+          const room = Math.max(0, target - current);
+          monthsNeeded = Math.ceil(room / moCap);
+          status = '~' + monthsNeeded + ' mo at ' + money(moCap) + '/mo';
         }
         return {
           id: g.id,
           name: g.name,
+          goalType: gt,
+          typeLabel,
           target,
           current,
           endBal,
-          monthly: 0,
+          monthly: Number(g.monthlyContribute) || 0,
           received: goalReceived[g.id] || 0,
           monthsNeeded,
           status,
@@ -1558,12 +1452,12 @@ textarea { min-height: 72px; resize: vertical; }
       return proj.goalETAs.map(g => `
         <div style="padding:10px 0;border-bottom:1px solid rgba(51,65,85,0.5);">
           <div class="alloc-row" style="border:none;padding:0;">
-            <div class="label"><strong style="color:var(--text)">${escapeHtml(g.name)}</strong></div>
+            <div class="label"><span class="badge ${g.goalType === 'critical' ? 'rose' : (g.goalType === 'emergency' ? 'amber' : 'sky')}">${escapeHtml(g.typeLabel || '')}</span> <strong style="color:var(--text)">${escapeHtml(g.name)}</strong></div>
             <div class="amt">${money(g.endBal)}${g.target > 0 ? ' / ' + money(g.target) : ''}</div>
           </div>
           <div class="progress-wrap">
             <div class="progress-header">
-              <span>${g.status}</span>
+              <span>${escapeHtml(g.status)}</span>
               <span class="pct">${g.pct}%</span>
             </div>
             <div class="progress-bar"><div class="progress-fill ${g.pct >= 100 ? '' : (g.pct >= 50 ? 'sky' : 'amber')}" style="width:${g.pct}%"></div></div>
@@ -1590,12 +1484,13 @@ textarea { min-height: 72px; resize: vertical; }
             <strong style="color:var(--text)">Month ${r.month}</strong>
             <div style="font-size:0.75rem;color:var(--muted);">
               In ${money(r.income)} · fixed ${money(r.fixedThisMo)} · allow ${money(r.allowThisMo)} ·
-              goals ${money(r.savedThisMo)} · debt −${money(r.debtPaidThisMo)}
+              goals ${money(r.savedThisMo)} · mins ${money(r.minsDebt || 0)} · extra debt ${money(r.extraDebt || 0)}
             </div>
             ${goalLine ? `<div style="font-size:0.72rem;color:var(--muted);margin-top:2px;">${goalLine}</div>` : ''}
           </div>
           <div class="amt" style="text-align:right;font-size:0.85rem;">
             <div style="color:var(--rose)">Debt ${money(r.debt)}</div>
+            <div style="color:var(--muted);font-size:0.75rem;">Bills ${money(r.bills)}</div>
           </div>
         </div>`;
       }).join('');
@@ -1620,40 +1515,36 @@ textarea { min-height: 72px; resize: vertical; }
       if (!el) return;
       el.classList.remove('hidden');
 
-      const goalLines = (lastSim.goalsMeta || []).map((g, i) =>
-        `<div class="alloc-row"><div class="label"><span class="badge ${i === 0 ? 'green' : 'purple'}">#${i + 1}</span> ${escapeHtml(g.name)}${g.target > 0 ? ' → ' + money(g.target) : ''}</div><div class="amt" style="color:var(--muted)">until target</div></div>`
-      ).join('');
+      const goalLines = (lastSim.goalsMeta || []).map((g) => {
+        const gt = g.goalType || 'want';
+        const badge = gt === 'critical' ? 'rose' : (gt === 'emergency' ? 'amber' : 'sky');
+        const label = gt === 'critical' ? 'Critical' : (gt === 'emergency' ? 'Emergency' : 'Want');
+        return `<div class="alloc-row"><div class="label"><span class="badge ${badge}">${label}</span> ${escapeHtml(g.name)}${g.target > 0 ? ' → ' + money(g.target) : ''}</div><div class="amt" style="color:var(--muted)">${money(g.monthlyContribute || 0)}/mo</div></div>`;
+      }).join('');
 
-      const isPaycheck = lastSim.mode === 'paycheck-25' || lastSim.mode === 'paycheck-10';
-      const title = isPaycheck
-        ? ('Paycheck window · ' + (lastSim.periodLabel || ''))
-        : ('Simulation · ' + lastSim.months + ' month' + (lastSim.months > 1 ? 's' : ''));
+      const title = 'Simulation · ' + lastSim.months + ' month' + (lastSim.months > 1 ? 's' : '');
       el.innerHTML = `
         <div class="result-box good">
           <h3>${escapeHtml(title)}</h3>
-          <p style="font-size:0.78rem;color:var(--muted);margin-bottom:8px;">
-            Sandbox only. ${isPaycheck
-              ? 'This is <strong>one paycheck</strong> through the next deposit — not a full month of costs.'
-              : 'Each month uses this waterfall — amounts never exceed income.'}
-          </p>
-          <p class="section-label">${isPaycheck ? 'This paycheck' : 'Monthly'} waterfall (${money(income)} income)</p>
-          <div class="alloc-row"><div class="label"><span class="badge amber">1</span> ${isPaycheck ? 'Due this window + allowance' : 'Living (housing + bills + debt mins + allowance)'}</div><div class="amt">${money(living)}</div></div>
+          <p class="section-label">Monthly waterfall (${money(income)} income)</p>
+          <div class="alloc-row"><div class="label"><span class="badge amber">1</span> Living (housing + bills + mins + allowance)</div><div class="amt">${money(living)}</div></div>
           <div class="progress-wrap"><div class="progress-bar"><div class="progress-fill amber" style="width:${income > 0 ? Math.min(100, living / income * 100) : 0}%"></div></div></div>
-          <div class="alloc-row"><div class="label"><span class="badge green">2</span> Leftover → goals by priority</div><div class="amt" style="color:var(--green)">${money(residual)}</div></div>
-          ${goalLines || '<p class="empty">No goals — residual goes to debt</p>'}
-          <div class="alloc-row"><div class="label"><span class="badge rose">3</span> After goals → extra to debt</div><div class="amt" style="color:var(--rose)">remainder</div></div>
+          <div class="alloc-row"><div class="label"><span class="badge green">2</span> Critical / Emergency goals</div><div class="amt" style="color:var(--green)">${money(residual)} available</div></div>
+          ${goalLines || '<p class="empty">No goals</p>'}
+          <div class="alloc-row"><div class="label"><span class="badge rose">3</span> Leftover → debt snowball</div><div class="amt" style="color:var(--rose)">${Math.round((lastSim.aggression || 1) * 100)}%</div></div>
           <div class="total-line"><span>Income check</span><span>${money(income)} = ${money(living)} living + ${money(residual)} free</span></div>
-          ${living > income ? '<p class="tip" style="color:var(--rose)">Costs exceed this paycheck — sim will show a shortfall.</p>' : ''}
+          ${living > income ? '<p class="tip" style="color:var(--rose)">Costs exceed monthly income — shortfall each month.</p>' : ''}
 
           <div class="summary-grid" id="sim-summary-grid" style="margin-top:14px;">
             ${buildSimSummaryHtml(proj)}
           </div>
-          <p class="section-label">Goals after this ${isPaycheck ? 'paycheck' : 'period'}</p>
+          <p class="section-label">Goals</p>
           <div id="sim-goals-eta">${buildSimGoalsEtaHtml(proj)}</div>
-          ${isPaycheck ? '' : '<p class="section-label">Debt payoff (with interest if on)</p><div id="sim-debt-eta">' + buildSimDebtEtaHtml(proj) + '</div>'}
-          <p class="section-label">${isPaycheck ? 'This window' : 'Month by month'}</p>
+          <p class="section-label">Debt snowball</p>
+          <div id="sim-debt-eta">${buildSimDebtEtaHtml(proj)}</div>
+          <p class="section-label">Month by month</p>
           <div id="sim-month-table">${buildSimMonthTableHtml(proj)}</div>
-          <p class="section-label">Ending sandbox balances</p>
+          <p class="section-label">Ending balances</p>
           <div id="sim-ending-bals">${buildSimEndingHtml(proj)}</div>
         </div>
       `;
